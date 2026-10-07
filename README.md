@@ -1,6 +1,6 @@
 # 智慧自习室预约与管理系统
 
-基于 Python、FastAPI、SQLite 和 uv 构建的预约管理工作台，默认通过本地 `8000` 端口运行。`7433` 保留给 GitHub VPN/代理，不用于启动应用。
+基于 Python、FastAPI、SQLite 和 uv 构建的预约管理工作台，默认通过本地 `8000` 端口运行。
 
 ## 启动
 
@@ -10,6 +10,8 @@ uv run uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
 ```
 
 浏览器打开 http://127.0.0.1:8000 。首次启动会自动创建 `app/study_room.db` 和演示数据。
+
+管理员演示账号：`admin` / `admin123456`；学生演示账号使用学号登录，默认密码为 `123456aa`。CSV 导入格式见 `docs/students.csv.example`。
 
 ## 已实现
 

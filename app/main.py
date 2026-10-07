@@ -1,12 +1,14 @@
 from __future__ import annotations
 
+import csv
+import io
 import sqlite3
 from contextlib import asynccontextmanager
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
 
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import FastAPI, File, HTTPException, Query, UploadFile
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
@@ -44,9 +46,20 @@ def init_db() -> None:
             name TEXT NOT NULL,
             student_no TEXT NOT NULL UNIQUE,
             phone TEXT NOT NULL,
+            password TEXT NOT NULL DEFAULT '123456aa',
             violations INTEGER NOT NULL DEFAULT 0,
             blacklisted INTEGER NOT NULL DEFAULT 0,
             rating REAL NOT NULL DEFAULT 5.0,
+            created_at TEXT NOT NULL
+        );
+        CREATE TABLE IF NOT EXISTS classrooms (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            building TEXT NOT NULL DEFAULT '主楼',
+            floor TEXT NOT NULL,
+            capacity INTEGER NOT NULL DEFAULT 1,
+            status TEXT NOT NULL DEFAULT 'open',
+            features TEXT NOT NULL DEFAULT '',
             created_at TEXT NOT NULL
         );
         CREATE TABLE IF NOT EXISTS bookings (
@@ -78,6 +91,17 @@ def init_db() -> None:
         );
         """
     )
+    user_columns = {row[1] for row in db.execute("PRAGMA table_info(users)").fetchall()}
+    if "password" not in user_columns:
+        db.execute("ALTER TABLE users ADD COLUMN password TEXT NOT NULL DEFAULT '123456aa'")
+    if db.execute("SELECT COUNT(*) FROM classrooms").fetchone()[0] == 0:
+        classrooms = [
+            ("一层安静区", "主楼", "一层", 24, "open", "自然采光 · 靠窗座位"),
+            ("二层讨论区", "主楼", "二层", 32, "open", "白板 · 投影 · 小组桌"),
+            ("三层专注区", "主楼", "三层", 28, "open", "独立隔间 · 静音"),
+            ("四层静音区", "主楼", "四层", 20, "maintenance", "自然采光 · 台灯"),
+        ]
+        db.executemany("INSERT INTO classrooms(name, building, floor, capacity, status, features, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)", [(*item, now_text()) for item in classrooms])
     if db.execute("SELECT COUNT(*) FROM rooms").fetchone()[0] == 0:
         rooms = [
             ("A-01", "一层·安静区", 1, "open", "靠窗 · 台灯"),
@@ -137,6 +161,34 @@ app = FastAPI(title="智慧自习室预约与管理系统", lifespan=lifespan)
 app.mount("/static", StaticFiles(directory=BASE_DIR / "static"), name="static")
 
 
+class LoginPayload(BaseModel):
+    account: str = Field(min_length=1)
+    password: str = Field(min_length=1)
+    role: str = "student"
+
+
+class PasswordChange(BaseModel):
+    old_password: str = Field(min_length=1)
+    new_password: str = Field(min_length=6)
+
+
+class StudentPayload(BaseModel):
+    name: str = Field(min_length=1)
+    student_no: str = Field(min_length=1)
+    phone: str = ""
+    password: str | None = None
+    blacklisted: bool = False
+
+
+class ClassroomPayload(BaseModel):
+    name: str = Field(min_length=1)
+    building: str = "主楼"
+    floor: str = "一层"
+    capacity: int = Field(default=1, ge=1, le=999)
+    status: str = "open"
+    features: str = ""
+
+
 class BookingCreate(BaseModel):
     user_id: int
     room_id: int
@@ -163,6 +215,38 @@ def index() -> FileResponse:
     return FileResponse(BASE_DIR / "static" / "index.html")
 
 
+@app.post("/api/auth/login")
+def login(payload: LoginPayload) -> dict[str, Any]:
+    if payload.role == "admin":
+        if payload.account != "admin" or payload.password != "admin123456":
+            raise HTTPException(401, "管理员账号或密码错误")
+        return {"role": "admin", "name": "林管理员", "account": "admin", "message": "登录成功"}
+    db = connect_db()
+    user = db.execute("SELECT id, name, student_no, blacklisted FROM users WHERE student_no = ? AND password = ?", (payload.account, payload.password)).fetchone()
+    db.close()
+    if not user:
+        raise HTTPException(401, "学号或密码错误")
+    if user["blacklisted"]:
+        raise HTTPException(403, "该账号已进入黑名单，请联系管理员")
+    return {"role": "student", "id": user["id"], "name": user["name"], "account": user["student_no"], "message": "登录成功"}
+
+
+@app.patch("/api/users/{user_id}/password")
+def change_password(user_id: int, payload: PasswordChange) -> dict[str, str]:
+    db = connect_db()
+    user = db.execute("SELECT password FROM users WHERE id = ?", (user_id,)).fetchone()
+    if not user:
+        db.close()
+        raise HTTPException(404, "学生不存在")
+    if user["password"] != payload.old_password:
+        db.close()
+        raise HTTPException(400, "原密码错误")
+    db.execute("UPDATE users SET password = ? WHERE id = ?", (payload.new_password, user_id))
+    db.commit()
+    db.close()
+    return {"message": "密码修改成功"}
+
+
 @app.get("/api/overview")
 def overview() -> dict[str, Any]:
     db = connect_db()
@@ -177,6 +261,50 @@ def overview() -> dict[str, Any]:
     return {"room_total": room_total, "open_rooms": open_rooms, "occupied": occupied, "booked": booked, "active_users": active_users, "violation_count": violation_count, "pending_complaints": pending_complaints, "updated_at": now_text()}
 
 
+@app.get("/api/classrooms")
+def get_classrooms() -> list[dict[str, Any]]:
+    db = connect_db()
+    result = rows_to_dict(db.execute("SELECT * FROM classrooms ORDER BY id").fetchall())
+    db.close()
+    return result
+
+
+@app.post("/api/classrooms")
+def create_classroom(payload: ClassroomPayload) -> dict[str, Any]:
+    db = connect_db()
+    cursor = db.execute("INSERT INTO classrooms(name, building, floor, capacity, status, features, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)", (payload.name, payload.building, payload.floor, payload.capacity, payload.status, payload.features, now_text()))
+    db.commit()
+    result = {"id": cursor.lastrowid, "message": "教室创建成功"}
+    db.close()
+    return result
+
+
+@app.patch("/api/classrooms/{classroom_id}")
+def update_classroom(classroom_id: int, payload: ClassroomPayload) -> dict[str, str]:
+    db = connect_db()
+    cursor = db.execute("UPDATE classrooms SET name = ?, building = ?, floor = ?, capacity = ?, status = ?, features = ? WHERE id = ?", (payload.name, payload.building, payload.floor, payload.capacity, payload.status, payload.features, classroom_id))
+    db.commit()
+    db.close()
+    if cursor.rowcount == 0:
+        raise HTTPException(404, "教室不存在")
+    return {"message": "教室更新成功"}
+
+
+@app.delete("/api/classrooms/{classroom_id}")
+def delete_classroom(classroom_id: int) -> dict[str, str]:
+    db = connect_db()
+    try:
+        cursor = db.execute("DELETE FROM classrooms WHERE id = ?", (classroom_id,))
+        db.commit()
+    except sqlite3.IntegrityError:
+        db.close()
+        raise HTTPException(409, "教室仍有关联数据，无法删除")
+    db.close()
+    if cursor.rowcount == 0:
+        raise HTTPException(404, "教室不存在")
+    return {"message": "教室删除成功"}
+
+
 @app.get("/api/rooms")
 def get_rooms() -> list[dict[str, Any]]:
     db = connect_db()
@@ -186,7 +314,7 @@ def get_rooms() -> list[dict[str, Any]]:
 
 
 @app.get("/api/bookings")
-def get_bookings(status: str | None = Query(default=None)) -> list[dict[str, Any]]:
+def get_bookings(status: str | None = Query(default=None), user_id: int | None = Query(default=None)) -> list[dict[str, Any]]:
     db = connect_db()
     query = """
         SELECT bookings.*, users.name AS user_name, users.student_no, rooms.name AS room_name,
@@ -194,10 +322,16 @@ def get_bookings(status: str | None = Query(default=None)) -> list[dict[str, Any
                WHEN 'completed' THEN '已完成' WHEN 'cancelled' THEN '已取消' WHEN 'violation' THEN '违约' END AS status_label
         FROM bookings JOIN users ON users.id = bookings.user_id JOIN rooms ON rooms.id = bookings.room_id
     """
-    params: tuple[Any, ...] = ()
+    conditions = []
+    params: list[Any] = []
     if status and status != "all":
-        query += " WHERE bookings.status = ?"
-        params = (status,)
+        conditions.append("bookings.status = ?")
+        params.append(status)
+    if user_id is not None:
+        conditions.append("bookings.user_id = ?")
+        params.append(user_id)
+    if conditions:
+        query += " WHERE " + " AND ".join(conditions)
     query += " ORDER BY bookings.start_at DESC, bookings.id DESC"
     result = rows_to_dict(db.execute(query, params).fetchall())
     db.close()
@@ -252,9 +386,76 @@ def update_booking_status(booking_id: int, status: str = Query(...)) -> dict[str
 @app.get("/api/users")
 def get_users() -> list[dict[str, Any]]:
     db = connect_db()
-    result = rows_to_dict(db.execute("SELECT * FROM users ORDER BY blacklisted DESC, id").fetchall())
+    result = rows_to_dict(db.execute("SELECT id, name, student_no, phone, violations, blacklisted, rating, created_at FROM users ORDER BY blacklisted DESC, id").fetchall())
     db.close()
     return result
+
+
+@app.post("/api/users")
+def create_user(payload: StudentPayload) -> dict[str, Any]:
+    db = connect_db()
+    try:
+        cursor = db.execute("INSERT INTO users(name, student_no, phone, password, blacklisted, created_at) VALUES (?, ?, ?, ?, ?, ?)", (payload.name, payload.student_no, payload.phone, payload.password or "123456aa", int(payload.blacklisted), now_text()))
+        db.commit()
+    except sqlite3.IntegrityError:
+        db.close()
+        raise HTTPException(409, "学号已存在")
+    db.close()
+    return {"id": cursor.lastrowid, "message": "学生创建成功"}
+
+
+@app.patch("/api/users/{user_id}")
+def update_user(user_id: int, payload: StudentPayload) -> dict[str, str]:
+    db = connect_db()
+    try:
+        if payload.password:
+            cursor = db.execute("UPDATE users SET name = ?, student_no = ?, phone = ?, password = ?, blacklisted = ? WHERE id = ?", (payload.name, payload.student_no, payload.phone, payload.password, int(payload.blacklisted), user_id))
+        else:
+            cursor = db.execute("UPDATE users SET name = ?, student_no = ?, phone = ?, blacklisted = ? WHERE id = ?", (payload.name, payload.student_no, payload.phone, int(payload.blacklisted), user_id))
+        db.commit()
+    except sqlite3.IntegrityError:
+        db.close()
+        raise HTTPException(409, "学号已存在")
+    db.close()
+    if cursor.rowcount == 0:
+        raise HTTPException(404, "学生不存在")
+    return {"message": "学生信息更新成功"}
+
+
+@app.delete("/api/users/{user_id}")
+def delete_user(user_id: int) -> dict[str, str]:
+    db = connect_db()
+    try:
+        cursor = db.execute("DELETE FROM users WHERE id = ?", (user_id,))
+        db.commit()
+    except sqlite3.IntegrityError:
+        db.close()
+        raise HTTPException(409, "学生仍有关联预约或记录，无法删除")
+    db.close()
+    if cursor.rowcount == 0:
+        raise HTTPException(404, "学生不存在")
+    return {"message": "学生删除成功"}
+
+
+@app.post("/api/users/import")
+async def import_users(file: UploadFile = File(...)) -> dict[str, Any]:
+    content = (await file.read()).decode("utf-8-sig")
+    reader = csv.DictReader(io.StringIO(content))
+    required = {"name", "student_no", "phone"}
+    if not reader.fieldnames or not required.issubset(set(reader.fieldnames)):
+        raise HTTPException(400, "CSV 必须包含 name, student_no, phone 列，可选 password 列")
+    db = connect_db()
+    created = 0
+    skipped = []
+    for row_number, row in enumerate(reader, start=2):
+        try:
+            db.execute("INSERT INTO users(name, student_no, phone, password, created_at) VALUES (?, ?, ?, ?, ?)", (row.get("name", "").strip(), row.get("student_no", "").strip(), row.get("phone", "").strip(), row.get("password", "123456aa").strip() or "123456aa", now_text()))
+            created += 1
+        except sqlite3.IntegrityError:
+            skipped.append({"row": row_number, "student_no": row.get("student_no", ""), "reason": "学号已存在或字段为空"})
+    db.commit()
+    db.close()
+    return {"created": created, "skipped": skipped, "message": f"导入完成，新增 {created} 人"}
 
 
 @app.get("/api/violations")
