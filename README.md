@@ -11,7 +11,7 @@ uv run uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
 
 浏览器打开 http://127.0.0.1:8000 。首次启动会自动创建 `app/study_room.db` 和演示数据。
 
-管理员演示账号：`admin` / `admin123456`；学生演示账号使用学号登录，默认密码为 `123456aa`。完整账号清单保存在本地 `docs/accounts.md`，其中包含密码，因此不纳入版本控制；CSV 导入格式见 `docs/students.csv.example`。
+管理员演示账号：`admin` / `admin123456`；学生演示账号使用学号登录，默认密码为 `123456aa`。完整演示账号清单见 `docs/accounts.md`，其中包含密码，仅用于本地演示，请勿用于正式环境；CSV 导入格式见 `docs/students.csv.example`。
 
 ## 已实现
 

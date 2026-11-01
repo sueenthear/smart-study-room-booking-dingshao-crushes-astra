@@ -5,6 +5,3 @@ __pycache__/
 *.sqlite3
 .env
 .DS_Store
-
-# Local demo account credentials
-docs/accounts.md
