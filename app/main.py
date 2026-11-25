@@ -1,14 +1,18 @@
 from __future__ import annotations
 
 import csv
+import hashlib
 import io
+import secrets
 import sqlite3
 from contextlib import asynccontextmanager
+from dataclasses import dataclass
 from datetime import datetime, timedelta
 from pathlib import Path
+from time import time
 from typing import Any
 
-from fastapi import FastAPI, File, HTTPException, Query, UploadFile
+from fastapi import Depends, FastAPI, File, Header, HTTPException, Query, UploadFile
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
@@ -18,9 +22,10 @@ DB_PATH = BASE_DIR / "study_room.db"
 
 
 def connect_db() -> sqlite3.Connection:
-    connection = sqlite3.connect(DB_PATH)
+    connection = sqlite3.connect(DB_PATH, timeout=30)
     connection.row_factory = sqlite3.Row
     connection.execute("PRAGMA foreign_keys = ON")
+    connection.execute("PRAGMA busy_timeout = 30000")
     return connection
 
 
@@ -32,6 +37,7 @@ RATING_BASE = 5.0
 RATING_PENALTY_PER_VIOLATION = 0.4
 CREDIT_RECOVERY_DAYS = 90
 LATE_GRACE_MINUTES = 15
+SESSION_TTL_HOURS = 12
 
 
 def calculate_credit_rating(violation_count: int) -> float:
@@ -131,14 +137,12 @@ def normalize_blacklist_until(value: str | None, blacklisted: bool) -> str | Non
 
 
 def release_expired_blacklists(db: sqlite3.Connection) -> None:
-    cursor = db.execute(
+    db.execute(
         "UPDATE users SET blacklisted = 0, blacklisted_until = NULL, "
         "blacklisted_at = NULL, blacklist_reason = '' "
         "WHERE blacklisted = 1 AND blacklisted_until IS NOT NULL AND blacklisted_until <= ?",
         (now_text(),),
     )
-    if cursor.rowcount:
-        db.commit()
 
 
 def account_snapshot(row: sqlite3.Row | dict[str, Any]) -> dict[str, Any]:
@@ -182,6 +186,7 @@ def account_snapshot(row: sqlite3.Row | dict[str, Any]) -> dict[str, Any]:
 
 def init_db() -> None:
     db = connect_db()
+    db.execute("PRAGMA journal_mode = WAL")
     db.executescript(
         """
         CREATE TABLE IF NOT EXISTS rooms (
@@ -210,6 +215,17 @@ def init_db() -> None:
             rating REAL NOT NULL DEFAULT 5.0,
             created_at TEXT NOT NULL
         );
+        CREATE TABLE IF NOT EXISTS auth_sessions (
+            token_hash TEXT PRIMARY KEY,
+            role TEXT NOT NULL CHECK (role IN ('admin', 'student')),
+            user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+            account TEXT NOT NULL,
+            name TEXT NOT NULL,
+            expires_at INTEGER NOT NULL,
+            created_at TEXT NOT NULL
+        );
+        CREATE INDEX IF NOT EXISTS idx_auth_sessions_expires_at
+            ON auth_sessions(expires_at);
         CREATE TABLE IF NOT EXISTS classrooms (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT NOT NULL,
@@ -393,7 +409,7 @@ app.mount("/static", StaticFiles(directory=BASE_DIR / "static"), name="static")
 class LoginPayload(BaseModel):
     account: str = Field(min_length=1)
     password: str = Field(min_length=1)
-    role: str = "student"
+    role: str = Field(default="student", pattern="^(admin|student)$")
 
 
 class PasswordChange(BaseModel):
@@ -450,6 +466,69 @@ class ManualViolation(BaseModel):
     reason: str = Field(min_length=1)
 
 
+@dataclass(frozen=True)
+class AuthContext:
+    role: str
+    account: str
+    name: str
+    user_id: int | None = None
+    token_hash: str | None = None
+
+    @property
+    def is_admin(self) -> bool:
+        return self.role == "admin"
+
+
+def token_digest(token: str) -> str:
+    return hashlib.sha256(token.encode("utf-8")).hexdigest()
+
+
+def bearer_token(authorization: str | None) -> str:
+    scheme, separator, token = (authorization or "").partition(" ")
+    if not separator or scheme.lower() != "bearer" or not token.strip():
+        raise HTTPException(401, "请先登录")
+    return token.strip()
+
+
+def current_auth(authorization: str | None = Header(default=None)) -> AuthContext:
+    token_hash = token_digest(bearer_token(authorization))
+    db = connect_db()
+    try:
+        row = db.execute(
+            "SELECT role, user_id, account, name FROM auth_sessions "
+            "WHERE token_hash = ? AND expires_at > ?",
+            (token_hash, int(time())),
+        ).fetchone()
+        if not row:
+            raise HTTPException(401, "登录已失效，请重新登录")
+        return AuthContext(
+            role=row["role"],
+            account=row["account"],
+            name=row["name"],
+            user_id=row["user_id"],
+            token_hash=token_hash,
+        )
+    finally:
+        db.close()
+
+
+def require_admin(auth: AuthContext = Depends(current_auth)) -> AuthContext:
+    if not auth.is_admin:
+        raise HTTPException(403, "仅管理员可执行此操作")
+    return auth
+
+
+def require_student(auth: AuthContext = Depends(current_auth)) -> AuthContext:
+    if auth.is_admin or auth.user_id is None:
+        raise HTTPException(403, "仅学生可执行此操作")
+    return auth
+
+
+def require_self_or_admin(user_id: int, auth: AuthContext) -> None:
+    if not auth.is_admin and auth.user_id != user_id:
+        raise HTTPException(403, "只能访问当前登录账号的数据")
+
+
 def rows_to_dict(rows: list[sqlite3.Row]) -> list[dict[str, Any]]:
     return [dict(row) for row in rows]
 
@@ -467,22 +546,60 @@ def login(payload: LoginPayload) -> dict[str, Any]:
     if payload.role == "admin":
         if payload.account != "admin" or payload.password != "admin123456":
             raise HTTPException(401, "管理员账号或密码错误")
-        return {"role": "admin", "name": "林管理员", "account": "admin", "message": "登录成功"}
+        db = connect_db()
+        token = secrets.token_urlsafe(32)
+        db.execute("DELETE FROM auth_sessions WHERE expires_at <= ?", (int(time()),))
+        db.execute(
+            "INSERT INTO auth_sessions(token_hash, role, user_id, account, name, expires_at, created_at) "
+            "VALUES (?, 'admin', NULL, ?, ?, ?, ?)",
+            (
+                token_digest(token),
+                payload.account,
+                "林管理员",
+                int(time()) + SESSION_TTL_HOURS * 3600,
+                now_text(),
+            ),
+        )
+        db.commit()
+        db.close()
+        return {
+            "token": token,
+            "role": "admin",
+            "name": "林管理员",
+            "account": "admin",
+            "message": "登录成功",
+        }
     db = connect_db()
     release_expired_blacklists(db)
     sync_all_user_ratings(db)
-    db.commit()
     user = db.execute(
         "SELECT id, name, student_no, phone, violations, blacklisted, blacklisted_until, "
         "blacklisted_at, blacklist_reason, rating "
         "FROM users WHERE student_no = ? AND password = ?",
         (payload.account, payload.password),
     ).fetchone()
-    db.close()
     if not user:
+        db.commit()
+        db.close()
         raise HTTPException(401, "学号或密码错误")
     account = account_snapshot(user)
+    token = secrets.token_urlsafe(32)
+    db.execute(
+        "INSERT INTO auth_sessions(token_hash, role, user_id, account, name, expires_at, created_at) "
+        "VALUES (?, 'student', ?, ?, ?, ?, ?)",
+        (
+            token_digest(token),
+            account["id"],
+            account["student_no"],
+            account["name"],
+            int(time()) + SESSION_TTL_HOURS * 3600,
+            now_text(),
+        ),
+    )
+    db.commit()
+    db.close()
     return {
+        "token": token,
         "role": "student",
         "id": account["id"],
         "name": account["name"],
@@ -493,8 +610,32 @@ def login(payload: LoginPayload) -> dict[str, Any]:
     }
 
 
+@app.post("/api/auth/logout")
+def logout(auth: AuthContext = Depends(current_auth)) -> dict[str, str]:
+    db = connect_db()
+    db.execute("DELETE FROM auth_sessions WHERE token_hash = ?", (auth.token_hash,))
+    db.commit()
+    db.close()
+    return {"message": "已退出登录"}
+
+
+@app.get("/api/auth/me")
+def session_identity(auth: AuthContext = Depends(current_auth)) -> dict[str, Any]:
+    return {
+        "role": auth.role,
+        "id": auth.user_id,
+        "name": auth.name,
+        "account": auth.account,
+    }
+
+
 @app.patch("/api/users/{user_id}/password")
-def change_password(user_id: int, payload: PasswordChange) -> dict[str, str]:
+def change_password(
+    user_id: int,
+    payload: PasswordChange,
+    auth: AuthContext = Depends(current_auth),
+) -> dict[str, str]:
+    require_self_or_admin(user_id, auth)
     db = connect_db()
     user = db.execute("SELECT password FROM users WHERE id = ?", (user_id,)).fetchone()
     if not user:
@@ -503,14 +644,22 @@ def change_password(user_id: int, payload: PasswordChange) -> dict[str, str]:
     if user["password"] != payload.old_password:
         db.close()
         raise HTTPException(400, "原密码错误")
-    db.execute("UPDATE users SET password = ? WHERE id = ?", (payload.new_password, user_id))
+    db.execute(
+        "UPDATE users SET password = ? WHERE id = ?",
+        (payload.new_password, user_id),
+    )
+    if auth.token_hash:
+        db.execute(
+            "DELETE FROM auth_sessions WHERE user_id = ? AND token_hash <> ?",
+            (user_id, auth.token_hash),
+        )
     db.commit()
     db.close()
     return {"message": "密码修改成功"}
 
 
 @app.get("/api/overview")
-def overview() -> dict[str, Any]:
+def overview(_: AuthContext = Depends(require_admin)) -> dict[str, Any]:
     db = connect_db()
     release_expired_blacklists(db)
     room_total = db.execute("SELECT COUNT(*) FROM rooms").fetchone()[0]
@@ -556,7 +705,10 @@ def get_classrooms() -> list[dict[str, Any]]:
 
 
 @app.post("/api/classrooms")
-def create_classroom(payload: ClassroomPayload) -> dict[str, Any]:
+def create_classroom(
+    payload: ClassroomPayload,
+    _: AuthContext = Depends(require_admin),
+) -> dict[str, Any]:
     db = connect_db()
     cursor = db.execute(
         "INSERT INTO classrooms(name, building, floor, capacity, status, features, created_at) VALUES (?, ?, ?, 0, 'open', ?, ?)",
@@ -569,7 +721,11 @@ def create_classroom(payload: ClassroomPayload) -> dict[str, Any]:
 
 
 @app.patch("/api/classrooms/{classroom_id}")
-def update_classroom(classroom_id: int, payload: ClassroomPayload) -> dict[str, str]:
+def update_classroom(
+    classroom_id: int,
+    payload: ClassroomPayload,
+    _: AuthContext = Depends(require_admin),
+) -> dict[str, str]:
     db = connect_db()
     cursor = db.execute(
         "UPDATE classrooms SET name = ?, building = ?, floor = ?, features = ? WHERE id = ?",
@@ -584,7 +740,10 @@ def update_classroom(classroom_id: int, payload: ClassroomPayload) -> dict[str, 
 
 
 @app.delete("/api/classrooms/{classroom_id}")
-def delete_classroom(classroom_id: int) -> dict[str, str]:
+def delete_classroom(
+    classroom_id: int,
+    _: AuthContext = Depends(require_admin),
+) -> dict[str, str]:
     db = connect_db()
     try:
         cursor = db.execute("DELETE FROM classrooms WHERE id = ?", (classroom_id,))
@@ -615,12 +774,17 @@ def get_rooms() -> list[dict[str, Any]]:
 
 
 @app.patch("/api/rooms/{room_id}/status")
-def update_room_status(room_id: int, payload: SeatStatusPayload) -> dict[str, str]:
+def update_room_status(
+    room_id: int,
+    payload: SeatStatusPayload,
+    _: AuthContext = Depends(require_admin),
+) -> dict[str, str]:
     allowed = {"open", "maintenance"}
     if payload.status not in allowed:
         raise HTTPException(400, "座位状态只能手动切换为可预约或维修中")
     note = payload.note.strip()
     db = connect_db()
+    db.execute("BEGIN IMMEDIATE")
     room = db.execute("SELECT * FROM rooms WHERE id = ?", (room_id,)).fetchone()
     if not room:
         db.close()
@@ -662,7 +826,15 @@ def update_room_status(room_id: int, payload: SeatStatusPayload) -> dict[str, st
 
 
 @app.get("/api/bookings")
-def get_bookings(status: str | None = Query(default=None), user_id: int | None = Query(default=None)) -> list[dict[str, Any]]:
+def get_bookings(
+    status: str | None = Query(default=None),
+    user_id: int | None = Query(default=None),
+    auth: AuthContext = Depends(current_auth),
+) -> list[dict[str, Any]]:
+    if not auth.is_admin:
+        if user_id is not None and user_id != auth.user_id:
+            raise HTTPException(403, "只能访问当前登录账号的数据")
+        user_id = auth.user_id
     db = connect_db()
     query = """
         SELECT bookings.*, users.name AS user_name, users.student_no, rooms.name AS room_name,
@@ -687,39 +859,80 @@ def get_bookings(status: str | None = Query(default=None), user_id: int | None =
 
 
 @app.post("/api/bookings")
-def create_booking(payload: BookingCreate) -> dict[str, Any]:
+def create_booking(
+    payload: BookingCreate,
+    auth: AuthContext = Depends(current_auth),
+) -> dict[str, Any]:
+    user_id = payload.user_id if auth.is_admin else auth.user_id
+    if user_id is None:
+        raise HTTPException(403, "当前账号不能创建预约")
     db = connect_db()
-    release_expired_blacklists(db)
-    user = db.execute("SELECT * FROM users WHERE id = ?", (payload.user_id,)).fetchone()
-    room = db.execute("SELECT * FROM rooms WHERE id = ?", (payload.room_id,)).fetchone()
-    if not user or not room:
-        db.close()
-        raise HTTPException(404, "用户或座位不存在")
-    if room["status"] != "open":
-        db.close()
-        raise HTTPException(409, f"该座位当前为{room['status']}状态，暂不可预约")
-    if user["blacklisted"]:
-        account = account_snapshot(user)
-        db.close()
-        suffix = (
-            f"，预计 {account['days_remaining']} 天后解封"
-            if account["days_remaining"] is not None
-            else "，请联系管理员确认解封时间"
+    try:
+        # SQLite write reservation serializes the conflict check and insert.
+        db.execute("BEGIN IMMEDIATE")
+        release_expired_blacklists(db)
+        user = db.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone()
+        room = db.execute(
+            "SELECT * FROM rooms WHERE id = ?",
+            (payload.room_id,),
+        ).fetchone()
+        if not user or not room:
+            raise HTTPException(404, "用户或座位不存在")
+        if room["status"] != "open":
+            raise HTTPException(409, f"该座位当前为{room['status']}状态，暂不可预约")
+        if user["blacklisted"]:
+            account = account_snapshot(user)
+            suffix = (
+                f"，预计 {account['days_remaining']} 天后解封"
+                if account["days_remaining"] is not None
+                else "，请联系管理员确认解封时间"
+            )
+            raise HTTPException(400, f"账号当前受限，暂不可预约{suffix}")
+        try:
+            start_at = datetime.strptime(payload.start_at.strip(), "%Y-%m-%d %H:%M")
+            end_at = datetime.strptime(payload.end_at.strip(), "%Y-%m-%d %H:%M")
+        except ValueError:
+            raise HTTPException(400, "预约时间格式不正确")
+        if end_at <= start_at:
+            raise HTTPException(400, "预约结束时间必须晚于开始时间")
+        start_text = start_at.strftime("%Y-%m-%d %H:%M")
+        end_text = end_at.strftime("%Y-%m-%d %H:%M")
+        conflict = db.execute(
+            "SELECT 1 FROM bookings "
+            "WHERE room_id = ? AND status IN ('booked', 'checked_in') "
+            "AND start_at < ? AND end_at > ?",
+            (payload.room_id, end_text, start_text),
+        ).fetchone()
+        if conflict:
+            raise HTTPException(409, "该座位在此时段已有预约")
+        cursor = db.execute(
+            "INSERT INTO bookings(user_id, room_id, start_at, end_at, status, source, created_at) "
+            "VALUES (?, ?, ?, ?, 'booked', ?, ?)",
+            (
+                user_id,
+                payload.room_id,
+                start_text,
+                end_text,
+                "admin" if auth.is_admin else "user",
+                now_text(),
+            ),
         )
-        raise HTTPException(400, f"账号当前受限，暂不可预约{suffix}")
-    conflict = db.execute("SELECT 1 FROM bookings WHERE room_id = ? AND status IN ('booked', 'checked_in') AND start_at < ? AND end_at > ?", (payload.room_id, payload.end_at, payload.start_at)).fetchone()
-    if conflict:
+        db.commit()
+        booking_id = cursor.lastrowid
+    except BaseException:
+        db.rollback()
+        raise
+    finally:
         db.close()
-        raise HTTPException(409, "该座位在此时段已有预约")
-    cursor = db.execute("INSERT INTO bookings(user_id, room_id, start_at, end_at, status, source, created_at) VALUES (?, ?, ?, ?, 'booked', 'admin', ?)", (payload.user_id, payload.room_id, payload.start_at, payload.end_at, now_text()))
-    db.commit()
-    booking_id = cursor.lastrowid
-    db.close()
     return {"id": booking_id, "message": "预约创建成功"}
 
 
 @app.patch("/api/bookings/{booking_id}/status")
-def update_booking_status(booking_id: int, status: str = Query(...)) -> dict[str, str]:
+def update_booking_status(
+    booking_id: int,
+    status: str = Query(...),
+    auth: AuthContext = Depends(current_auth),
+) -> dict[str, str]:
     allowed = {"booked", "checked_in", "completed", "cancelled", "violation"}
     if status not in allowed:
         raise HTTPException(400, "不支持的预约状态")
@@ -735,6 +948,13 @@ def update_booking_status(booking_id: int, status: str = Query(...)) -> dict[str
     if not booking:
         db.close()
         raise HTTPException(404, "预约不存在")
+    if not auth.is_admin:
+        if booking["user_id"] != auth.user_id:
+            db.close()
+            raise HTTPException(403, "只能操作当前账号的预约")
+        if status not in {"checked_in", "completed", "cancelled"}:
+            db.close()
+            raise HTTPException(403, "学生只能签到、签退或取消本人预约")
     current_status = booking["status"]
     if status not in transitions.get(current_status, set()):
         db.close()
@@ -813,7 +1033,7 @@ def update_booking_status(booking_id: int, status: str = Query(...)) -> dict[str
 
 
 @app.get("/api/users")
-def get_users() -> list[dict[str, Any]]:
+def get_users(_: AuthContext = Depends(require_admin)) -> list[dict[str, Any]]:
     db = connect_db()
     release_expired_blacklists(db)
     sync_all_user_ratings(db)
@@ -830,7 +1050,11 @@ def get_users() -> list[dict[str, Any]]:
 
 
 @app.get("/api/users/{user_id}/account-status")
-def get_account_status(user_id: int) -> dict[str, Any]:
+def get_account_status(
+    user_id: int,
+    auth: AuthContext = Depends(current_auth),
+) -> dict[str, Any]:
+    require_self_or_admin(user_id, auth)
     db = connect_db()
     release_expired_blacklists(db)
     sync_user_rating(db, user_id)
@@ -848,7 +1072,11 @@ def get_account_status(user_id: int) -> dict[str, Any]:
 
 
 @app.get("/api/users/{user_id}/credit-profile")
-def get_credit_profile(user_id: int) -> dict[str, Any]:
+def get_credit_profile(
+    user_id: int,
+    auth: AuthContext = Depends(current_auth),
+) -> dict[str, Any]:
+    require_self_or_admin(user_id, auth)
     db = connect_db()
     release_expired_blacklists(db)
     user = db.execute(
@@ -921,7 +1149,10 @@ def get_credit_profile(user_id: int) -> dict[str, Any]:
 
 
 @app.post("/api/users")
-def create_user(payload: StudentPayload) -> dict[str, Any]:
+def create_user(
+    payload: StudentPayload,
+    _: AuthContext = Depends(require_admin),
+) -> dict[str, Any]:
     blacklisted_until = normalize_blacklist_until(payload.blacklisted_until, payload.blacklisted)
     blacklist_reason = (
         (payload.blacklist_reason or "").strip() or "账号被管理员限制使用"
@@ -953,7 +1184,11 @@ def create_user(payload: StudentPayload) -> dict[str, Any]:
 
 
 @app.patch("/api/users/{user_id}")
-def update_user(user_id: int, payload: StudentPayload) -> dict[str, str]:
+def update_user(
+    user_id: int,
+    payload: StudentPayload,
+    _: AuthContext = Depends(require_admin),
+) -> dict[str, str]:
     blacklisted_until = normalize_blacklist_until(payload.blacklisted_until, payload.blacklisted)
     db = connect_db()
     existing = db.execute(
@@ -1020,7 +1255,10 @@ def update_user(user_id: int, payload: StudentPayload) -> dict[str, str]:
 
 
 @app.delete("/api/users/{user_id}")
-def delete_user(user_id: int) -> dict[str, str]:
+def delete_user(
+    user_id: int,
+    _: AuthContext = Depends(require_admin),
+) -> dict[str, str]:
     db = connect_db()
     try:
         cursor = db.execute("DELETE FROM users WHERE id = ?", (user_id,))
@@ -1035,7 +1273,10 @@ def delete_user(user_id: int) -> dict[str, str]:
 
 
 @app.post("/api/users/import")
-async def import_users(file: UploadFile = File(...)) -> dict[str, Any]:
+async def import_users(
+    file: UploadFile = File(...),
+    _: AuthContext = Depends(require_admin),
+) -> dict[str, Any]:
     content = (await file.read()).decode("utf-8-sig")
     reader = csv.DictReader(io.StringIO(content))
     required = {"name", "student_no", "phone"}
@@ -1056,15 +1297,33 @@ async def import_users(file: UploadFile = File(...)) -> dict[str, Any]:
 
 
 @app.get("/api/violations")
-def get_violations() -> list[dict[str, Any]]:
+def get_violations(
+    user_id: int | None = None,
+    auth: AuthContext = Depends(current_auth),
+) -> list[dict[str, Any]]:
     db = connect_db()
-    result = rows_to_dict(db.execute("SELECT violations.*, users.name AS user_name, users.student_no FROM violations JOIN users ON users.id = violations.user_id ORDER BY violations.created_at DESC").fetchall())
+    sql = (
+        "SELECT violations.*, users.name AS user_name, users.student_no "
+        "FROM violations JOIN users ON users.id = violations.user_id"
+    )
+    params: tuple[Any, ...] = ()
+    if not auth.is_admin:
+        sql += " WHERE violations.user_id = ?"
+        params = (auth.user_id,)
+    elif user_id is not None:
+        sql += " WHERE violations.user_id = ?"
+        params = (user_id,)
+    sql += " ORDER BY violations.created_at DESC"
+    result = rows_to_dict(db.execute(sql, params).fetchall())
     db.close()
     return result
 
 
 @app.post("/api/violations")
-def create_violation(payload: ManualViolation) -> dict[str, Any]:
+def create_violation(
+    payload: ManualViolation,
+    _: AuthContext = Depends(require_admin),
+) -> dict[str, Any]:
     db = connect_db()
     user = db.execute("SELECT id FROM users WHERE id = ?", (payload.user_id,)).fetchone()
     if not user:
@@ -1079,7 +1338,14 @@ def create_violation(payload: ManualViolation) -> dict[str, Any]:
 
 
 @app.get("/api/complaints")
-def get_complaints(user_id: int | None = None) -> list[dict[str, Any]]:
+def get_complaints(
+    user_id: int | None = None,
+    auth: AuthContext = Depends(current_auth),
+) -> list[dict[str, Any]]:
+    if not auth.is_admin:
+        if user_id is not None and user_id != auth.user_id:
+            raise HTTPException(403, "只能访问当前登录账号的数据")
+        user_id = auth.user_id
     db = connect_db()
     sql = (
         "SELECT complaints.*, users.name AS user_name, users.student_no, rooms.name AS room_name "
@@ -1097,9 +1363,14 @@ def get_complaints(user_id: int | None = None) -> list[dict[str, Any]]:
 
 
 @app.post("/api/complaints")
-def create_complaint(payload: ComplaintCreate) -> dict[str, Any]:
+def create_complaint(
+    payload: ComplaintCreate,
+    auth: AuthContext = Depends(require_student),
+) -> dict[str, Any]:
+    user_id = auth.user_id
+    assert user_id is not None
     db = connect_db()
-    user = db.execute("SELECT id FROM users WHERE id = ?", (payload.user_id,)).fetchone()
+    user = db.execute("SELECT id FROM users WHERE id = ?", (user_id,)).fetchone()
     if not user:
         db.close()
         raise HTTPException(404, "学生不存在")
@@ -1117,7 +1388,7 @@ def create_complaint(payload: ComplaintCreate) -> dict[str, Any]:
         "INSERT INTO complaints(user_id, room_id, subject, category, content, status, reply, created_at) "
         "VALUES (?, ?, ?, ?, ?, '待处理', '', ?)",
         (
-            payload.user_id,
+            user_id,
             payload.room_id,
             subject,
             payload.category.strip() or "其他",
@@ -1131,7 +1402,11 @@ def create_complaint(payload: ComplaintCreate) -> dict[str, Any]:
 
 
 @app.patch("/api/complaints/{complaint_id}")
-def update_complaint(complaint_id: int, payload: ComplaintReply) -> dict[str, str]:
+def update_complaint(
+    complaint_id: int,
+    payload: ComplaintReply,
+    _: AuthContext = Depends(require_admin),
+) -> dict[str, str]:
     db = connect_db()
     cursor = db.execute(
         "UPDATE complaints SET status = ?, reply = ? WHERE id = ?",
@@ -1145,7 +1420,7 @@ def update_complaint(complaint_id: int, payload: ComplaintReply) -> dict[str, st
 
 
 @app.get("/api/analytics")
-def analytics() -> dict[str, Any]:
+def analytics(_: AuthContext = Depends(require_admin)) -> dict[str, Any]:
     db = connect_db()
     daily = []
     base = datetime.now().date()
