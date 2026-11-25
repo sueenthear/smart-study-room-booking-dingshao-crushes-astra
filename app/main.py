@@ -1008,19 +1008,15 @@ def update_booking_status(
         )
     elif status == "cancelled":
         db.execute("UPDATE bookings SET status = 'cancelled' WHERE id = ?", (booking_id,))
-        db.execute(
-            "UPDATE rooms SET status = 'open', status_note = '', status_updated_at = ? "
-            "WHERE id = ? AND status = 'occupied'",
-            (now_text(), booking["room_id"]),
-        )
     elif status == "violation":
         reason = "预约时段未签到" if current_status == "booked" else "使用期间违规"
         db.execute("UPDATE bookings SET status = 'violation' WHERE id = ?", (booking_id,))
-        db.execute(
-            "UPDATE rooms SET status = 'open', status_note = '', status_updated_at = ? "
-            "WHERE id = ? AND status = 'occupied'",
-            (now_text(), booking["room_id"]),
-        )
+        if current_status == "checked_in":
+            db.execute(
+                "UPDATE rooms SET status = 'open', status_note = '', status_updated_at = ? "
+                "WHERE id = ? AND status = 'occupied'",
+                (now_text(), booking["room_id"]),
+            )
         db.execute(
             "INSERT INTO violations(user_id, booking_id, reason, source, created_at) VALUES (?, ?, ?, 'system', ?)",
             (booking["user_id"], booking_id, reason, now_text()),
