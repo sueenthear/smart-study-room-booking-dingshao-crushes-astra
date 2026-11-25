@@ -10,4 +10,6 @@ dependencies = [
 ]
 
 [tool.uv]
-dev-dependencies = []
+dev-dependencies = [
+    "httpx2>=2.16.2",
+]

@@ -1,3 +1,4 @@
+const storedSession = JSON.parse(localStorage.getItem("studySession") || "null");
 const state = {
   overview: null,
   bookings: [],
@@ -10,7 +11,7 @@ const state = {
   violations: [],
   analytics: null,
   activeView: "overview",
-  session: JSON.parse(localStorage.getItem("studySession") || "null"),
+  session: storedSession?.token ? storedSession : null,
   modal: false,
 };
 const $ = (selector) => document.querySelector(selector);
@@ -24,8 +25,21 @@ const escapeHtml = (value) =>
   );
 const icon = (name) => `<i data-lucide="${name}"></i>`;
 const api = async (url, options = {}) => {
-  const response = await fetch(url, options);
+  const headers = new Headers(options.headers || {});
+  if (state.session?.token)
+    headers.set("Authorization", `Bearer ${state.session.token}`);
+  let response;
+  try {
+    response = await fetch(url, { ...options, headers });
+  } catch (error) {
+    throw new Error("服务当前不可用，请稍后重试");
+  }
   const data = await response.json();
+  if (response.status === 401 && state.session) {
+    localStorage.removeItem("studySession");
+    state.session = null;
+    renderLogin();
+  }
   if (!response.ok) throw new Error(data.detail || "请求失败");
   return data;
 };
@@ -76,14 +90,6 @@ function renderShell() {
 }
 async function refresh(shouldRender = true) {
   if (!state.session) return;
-  const common = [
-    api("/api/bookings"),
-    api("/api/rooms"),
-    api("/api/classrooms"),
-    api("/api/users"),
-    api("/api/complaints"),
-    api("/api/violations"),
-  ];
   const canAutoRender = () =>
     !state.modal &&
     !document.activeElement?.closest?.("#feedback-form") &&
@@ -100,7 +106,12 @@ async function refresh(shouldRender = true) {
       state.analytics,
     ] = await Promise.all([
       api("/api/overview"),
-      ...common,
+      api("/api/bookings"),
+      api("/api/rooms"),
+      api("/api/classrooms"),
+      api("/api/users"),
+      api("/api/complaints"),
+      api("/api/violations"),
       api("/api/analytics"),
     ]);
     if (shouldRender && canAutoRender()) renderView();
@@ -112,12 +123,14 @@ async function refresh(shouldRender = true) {
       state.account,
       state.credit,
       state.complaints,
+      state.violations,
     ] = await Promise.all([
       api(`/api/bookings?user_id=${state.session.id}`),
       api("/api/rooms"),
       api(`/api/users/${state.session.id}/account-status`),
       api(`/api/users/${state.session.id}/credit-profile`),
       api(`/api/complaints?user_id=${state.session.id}`),
+      api("/api/violations"),
     ]);
     if (shouldRender && canAutoRender()) renderView();
   }
@@ -138,6 +151,21 @@ function setSession(session) {
   state.activeView = session.role === "admin" ? "overview" : "student-home";
   renderShell();
   refresh();
+}
+async function refreshAfterAuthFailure() {
+  try {
+    const identity = await api("/api/auth/me");
+    if (state.session) {
+      state.session = { ...state.session, ...identity };
+      localStorage.setItem("studySession", JSON.stringify(state.session));
+      return;
+    }
+  } catch (error) {
+    // A 401 has already returned the application to the login page.
+    return;
+  }
+  localStorage.removeItem("studySession");
+  renderLogin();
 }
 function renderView() {
   const renderers = {
@@ -277,12 +305,16 @@ function seatHistory(roomId) {
   if (!room) return;
   const history = state.bookings
     .filter((item) => item.room_id === Number(roomId))
+    .filter(
+      (item) =>
+        state.session.role === "admin" || item.user_id === state.session.id,
+    )
     .sort((a, b) => b.start_at.localeCompare(a.start_at))
     .slice(0, 12);
   modal(
     `${room.name} · 预约记录`,
     `${room.classroom_name || room.floor} · 共 ${history.length} 条最近记录`,
-    `<div class="seat-history-summary"><span>${icon("armchair")}${escapeHtml(room.name)}</span><span>${room.status === "open" ? status("可预约", "green") : room.status === "occupied" ? status("使用中", "orange") : status("维修中", "red")}</span></div><div class="table-panel seat-history-table"><table><thead><tr><th>预约人</th><th>时段</th><th>状态</th><th>异常</th></tr></thead><tbody>${history.map((item) => `<tr><td>${escapeHtml(item.user_name)}<small class="table-subtext">${escapeHtml(item.student_no || "")}</small></td><td>${escapeHtml(item.start_at.slice(5))}<br><span>至 ${escapeHtml(item.end_at.slice(11))}</span></td><td>${item.status === "booked" ? status("已预约", "blue") : item.status === "checked_in" ? status("使用中", "orange") : item.status === "violation" ? status("违约", "red") : status(item.status_label, "gray")}</td><td>${bookingTiming(item) || "正常"}</td></tr>`).join("") || `<tr><td colspan="4" class="empty">该座位暂无预约记录</td></tr>`}</tbody></table></div><div class="modal-actions"><button type="button" class="ghost-btn" data-action="close-modal">关闭</button></div>`,
+    `<div class="seat-history-summary"><span>${icon("armchair")}${escapeHtml(room.name)}</span><span>${room.status === "open" ? status("可预约", "green") : room.status === "occupied" ? status("使用中", "orange") : status("维修中", "red")}</span></div><div class="table-panel seat-history-table"><table><thead><tr><th>预约人</th><th>时段</th><th>状态</th><th>异常</th></tr></thead><tbody>${history.map((item) => `<tr><td>${escapeHtml(state.session.role === "admin" ? item.user_name : "我的预约")}<small class="table-subtext">${state.session.role === "admin" ? escapeHtml(item.student_no || "") : ""}</small></td><td>${escapeHtml(item.start_at.slice(5))}<br><span>至 ${escapeHtml(item.end_at.slice(11))}</span></td><td>${item.status === "booked" ? status("已预约", "blue") : item.status === "checked_in" ? status("使用中", "orange") : item.status === "violation" ? status("违约", "red") : status(item.status_label, "gray")}</td><td>${bookingTiming(item) || "正常"}</td></tr>`).join("") || `<tr><td colspan="4" class="empty">该座位暂无预约记录</td></tr>`}</tbody></table></div><div class="modal-actions"><button type="button" class="ghost-btn" data-action="close-modal">关闭</button></div>`,
   );
 }
 function renderClassrooms() {
@@ -334,7 +366,7 @@ function renderStudentHome() {
   const credit = state.credit
     ? `<button class="home-credit-card" type="button" data-view-link="student-credit"><span>${icon("badge-check")}履约信用</span><strong>${Number(state.credit.score).toFixed(1)}<small> / 5.0</small></strong><em>${escapeHtml(state.credit.level_label)} · 查看评分依据</em></button>`
     : "";
-  return `<div class="student-portal">${pageHeader("我的预约", "查看你的学习安排和座位使用状态。", action)}${limitNotice}<div class="home-summary-row">${credit}<div class="home-summary-card"><span>${icon("calendar-check-2")}预约记录</span><strong>${mine.length}</strong><em>当前账号下的全部预约</em></div></div><div class="student-booking-grid">${mine.map((item) => `<div class="student-booking"><div class="room-card-top"><strong>${escapeHtml(item.room_name)}</strong>${item.status === "booked" ? status("已预约", "blue") : item.status === "checked_in" ? status("使用中", "orange") : status(item.status_label, "gray")}</div><p>${escapeHtml(item.start_at)} - ${escapeHtml(item.end_at.slice(11))}</p>${item.status === "booked" ? `<div class="classroom-actions"><button class="action-link" data-booking-id="${item.id}" data-status="cancelled">取消预约</button></div>` : ""}${bookingTiming(item) ? `<div class="student-booking-timing">${bookingTiming(item)}</div>` : ""}</div>`).join("") || '<div class="panel empty">还没有预约，先为自己找一个好位置吧。</div>'}</div></div>`;
+  return `<div class="student-portal">${pageHeader("我的预约", "查看你的学习安排和座位使用状态。", action)}${limitNotice}<div class="home-summary-row">${credit}<div class="home-summary-card"><span>${icon("calendar-check-2")}预约记录</span><strong>${mine.length}</strong><em>当前账号下的全部预约</em></div></div><div class="student-booking-grid">${mine.map((item) => `<div class="student-booking"><div class="room-card-top"><strong>${escapeHtml(item.room_name)}</strong>${item.status === "booked" ? status("已预约", "blue") : item.status === "checked_in" ? status("使用中", "orange") : status(item.status_label, "gray")}</div><p>${escapeHtml(item.start_at)} - ${escapeHtml(item.end_at.slice(11))}</p>${item.status === "booked" ? `<div class="classroom-actions"><button class="action-link" data-booking-id="${item.id}" data-status="checked_in">签到</button><button class="action-link" data-booking-id="${item.id}" data-status="cancelled">取消预约</button></div>` : item.status === "checked_in" ? `<div class="classroom-actions"><button class="action-link" data-booking-id="${item.id}" data-status="completed">签退</button></div>` : ""}${bookingTiming(item) ? `<div class="student-booking-timing">${bookingTiming(item)}</div>` : ""}</div>`).join("") || '<div class="panel empty">还没有预约，先为自己找一个好位置吧。</div>'}</div></div>`;
 }
 function renderStudentFeedback() {
   const categories = [
@@ -395,7 +427,7 @@ function renderStudentCredit() {
       : "green";
   const counts = credit.booking_counts || {};
   const violations = credit.recent_violations || [];
-  return `<div class="student-portal">${pageHeader("履约信用", "信用分根据可核验的预约履约记录自动计算，不采用学生互评。")}<div class="credit-layout"><section class="credit-score-card ${credit.level}"><span class="account-kicker">FULFILLMENT CREDIT</span><div class="credit-score-heading"><div><h2>${escapeHtml(credit.level_label)}</h2><p>${escapeHtml(credit.rule)}</p></div>${status(credit.level_label, levelColor)}</div><div class="credit-score-value">${score.toFixed(1)}<small> / ${Number(credit.max_score).toFixed(1)}</small></div><div class="credit-progress"><i style="width:${Math.max(4, (score / Number(credit.max_score || 5)) * 100)}%"></i></div><div class="credit-score-foot"><span>已扣 ${Number(credit.score_lost).toFixed(1)} 分</span><span>再记 1 次违约将变为 ${Number(credit.next_violation_score).toFixed(1)} 分</span></div></section><section class="panel credit-rule-panel"><div class="panel-head"><div><h2>为什么不是学生互评？</h2><p>自习室场景更适合评价履约行为</p></div>${icon("info")}</div><div class="credit-rule-list"><div><span>${icon("user-check")}</span><div><strong>不采用学生评价学生</strong><p>同学之间没有稳定的服务关系，互评容易产生主观性和恶意评分。</p></div></div><div><span>${icon("calendar-check-2")}</span><div><strong>根据预约与违约记录计算</strong><p>系统只使用可核验的违约次数、预约完成情况和账号状态。</p></div></div><div><span>${icon("rotate-ccw")}</span><div><strong>${credit.recovery_days} 天自动恢复</strong><p>每条违约记录满 ${credit.recovery_days} 天后不再计入信用分${credit.next_recovery_date ? `，预计下一条于 ${escapeHtml(credit.next_recovery_date)} 恢复` : ""}。</p></div></div></div></section></div><div class="credit-stat-grid"><div class="credit-stat-card"><span>完成预约</span><strong>${counts.completed || 0}</strong><small>正常履约记录</small></div><div class="credit-stat-card"><span>取消预约</span><strong>${counts.cancelled || 0}</strong><small>当前规则不扣分</small></div><div class="credit-stat-card is-risk"><span>信用扣分记录</span><strong>${credit.violation_count || 0}</strong><small>累计 ${credit.total_violation_count || 0} 条 · 超过 ${credit.recovery_days} 天自动恢复</small></div><div class="credit-stat-card"><span>进行中预约</span><strong>${(counts.booked || 0) + (counts.checked_in || 0)}</strong><small>已预约或使用中</small></div></div><div class="panel table-panel credit-history-panel"><div class="panel-head"><div><h2>最近违约记录</h2><p>信用分会随违约登记和管理员调整实时更新</p></div></div><table><thead><tr><th>原因</th><th>关联座位</th><th>来源</th><th>时间</th><th>信用影响</th></tr></thead><tbody>${violations.map((item) => `<tr><td>${escapeHtml(item.reason)}</td><td>${item.room_name ? escapeHtml(item.room_name) : "—"}</td><td>${item.source === "system" ? status("系统判定", "purple") : status("管理员登记", "orange")}</td><td>${escapeHtml(item.created_at)}</td><td>${item.is_active ? `<strong class="credit-negative">−0.4 分</strong>` : status("已恢复", "green")}</td></tr>`).join("") || `<tr><td colspan="5" class="empty">暂无违约记录，继续保持正常预约和签到即可</td></tr>`}</tbody></table></div></div>`;
+  return `<div class="student-portal">${pageHeader("履约信用", "信用分根据可核验的预约履约记录自动计算，不采用学生互评。")}<div class="credit-layout"><section class="credit-score-card ${credit.level}"><span class="account-kicker">FULFILLMENT CREDIT</span><div class="credit-score-heading"><div><h2>${escapeHtml(credit.level_label)}</h2><p>${escapeHtml(credit.rule)}</p></div>${status(credit.level_label, levelColor)}</div><div class="credit-score-value">${score.toFixed(1)}<small> / ${Number(credit.max_score).toFixed(1)}</small></div><div class="credit-progress"><i style="width:${Math.max(4, (score / Number(credit.max_score || 5)) * 100)}%"></i></div><div class="credit-score-foot"><span>已扣 ${Number(credit.score_lost).toFixed(1)} 分</span><span>再记 1 次违约将变为 ${Number(credit.next_violation_score).toFixed(1)} 分</span></div></section><section class="panel credit-rule-panel"><div class="panel-head"><div><h2>为什么不是学生互评？</h2><p>自习室场景更适合评价履约行为</p></div>${icon("info")}</div><div class="credit-rule-list"><div><span>${icon("user-check")}</span><div><strong>不采用学生评价学生</strong><p>同学之间没有稳定的服务关系，互评容易产生主观性和恶意评分。</p></div></div><div><span>${icon("calendar-check-2")}</span><div><strong>根据预约与违约记录计算</strong><p>系统只使用可核验的违约次数、预约完成情况和账号状态。</p></div></div><div><span>${icon("rotate-ccw")}</span><div><strong>${credit.recovery_days} 天自动恢复</strong><p>每条违约记录满 ${credit.recovery_days} 天后不再计入信用分${credit.next_recovery_date ? `，预计下一条于 ${escapeHtml(credit.next_recovery_date)} 恢复` : ""}。</p></div></div></div></section></div><div class="credit-stat-grid"><div class="credit-stat-card"><span>完成预约</span><strong>${counts.completed || 0}</strong><small>正常履约记录</small></div><div class="credit-stat-card"><span>取消预约</span><strong>${counts.cancelled || 0}</strong><small>当前规则不扣分</small></div><div class="credit-stat-card is-risk"><span>信用扣分记录</span><strong>${credit.violation_count || 0}</strong><small>累计 ${credit.total_violation_count || 0} 条 · 超过 ${credit.recovery_days} 天自动恢复</small></div><div class="credit-stat-card"><span>进行中预约</span><strong>${(counts.booked || 0) + (counts.checked_in || 0)}</strong><small>已预约或使用中</small></div></div><div class="panel table-panel credit-history-panel"><div class="panel-head"><div><h2>最近违约记录</h2><p>信用分会随违约登记和管理员调整实时更新</p></div></div><table><thead><tr><th>原因</th><th>关联座位</th><th>来源</th><th>时间</th><th>信用影响</th></tr></thead><tbody>${violations.map((item) => `<tr><td>${escapeHtml(item.reason)}</td><td>${item.room_name ? escapeHtml(item.room_name) : "—"}</td><td>${item.source === "system" ? status("系统判定", "purple") : status("管理员登记", "orange")}</td><td>${escapeHtml(item.created_at)}</td><td>${item.is_active ? `<strong class="credit-negative">-0.4 分</strong>` : status("已恢复", "green")}</td></tr>`).join("") || `<tr><td colspan="5" class="empty">暂无违约记录，继续保持正常预约和签到即可</td></tr>`}</tbody></table></div></div>`;
 }
 function renderStudentPassword() {
   return `<div class="student-portal">${pageHeader("修改密码", "定期修改密码，保护你的账户安全。")}<div class="panel"><form id="password-form" class="form-row"><div class="auth-field wide"><label>原密码</label><input name="old_password" type="password" required></div><div class="auth-field wide"><label>新密码</label><input name="new_password" type="password" minlength="6" required></div><button class="primary-btn" type="submit">${icon("key-round")}确认修改</button></form></div></div>`;
@@ -643,14 +675,6 @@ document.addEventListener("click", async (event) => {
   const action = event.target.closest("[data-action]");
   if (action) {
     const name = action.dataset.action;
-    if (name === "logout") {
-      localStorage.removeItem("studySession");
-      state.session = null;
-      state.account = null;
-      state.complaints = [];
-      closeModal();
-      renderLogin();
-    }
     if (name === "user-center") {
       state.activeView = "user-center";
       if (state.session.role === "student" && !state.account)
@@ -693,6 +717,19 @@ document.addEventListener("click", async (event) => {
       a.href = URL.createObjectURL(blob);
       a.download = "students.csv.example";
       a.click();
+    }
+    if (name === "logout") {
+      try {
+        await api("/api/auth/logout", { method: "POST" });
+      } catch (error) {
+        // Clear the local session even if the server session already expired.
+      }
+      localStorage.removeItem("studySession");
+      state.session = null;
+      state.account = null;
+      state.complaints = [];
+      closeModal();
+      renderLogin();
     }
     if (name === "refresh") {
       await refresh();
@@ -815,7 +852,7 @@ document.addEventListener("change", async (event) => {
 function boot() {
   if (state.session) {
     renderShell();
-    refresh();
+    refreshAfterAuthFailure();
   } else renderLogin();
   setInterval(() => {
     if (state.session) refresh(true);
