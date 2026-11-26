@@ -1,0 +1,289 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="2300" height="1920" viewBox="0 0 2300 1920" role="img" aria-labelledby="title desc">
+<title id="title">图 3-2-2 智慧自习室预约与管理系统 UML 类图</title>
+<desc id="desc">包含界面层、业务控制层、实体层及核心业务关系的 UML 类图。</desc>
+<defs>
+  <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="4" stdDeviation="6" flood-color="#243142" flood-opacity="0.10"/></filter>
+  <marker id="arrow" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto" markerUnits="strokeWidth"><path d="M 1 1 L 11 6 L 1 11" fill="none" stroke="#596273" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></marker>
+  <marker id="arrowSmall" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto" markerUnits="strokeWidth"><path d="M 1 1 L 8 4.5 L 1 8" fill="none" stroke="#596273" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></marker>
+  <marker id="triangle" markerWidth="16" markerHeight="16" refX="14" refY="8" orient="auto" markerUnits="strokeWidth"><path d="M 1 1 L 14 8 L 1 15 Z" fill="#ffffff" stroke="#596273" stroke-width="1.7"/></marker>
+  <style>
+    .title { font-family: "Microsoft YaHei", "Noto Sans SC", sans-serif; font-size: 32px; font-weight: 700; fill: #202938; }
+    .subtitle { font-family: "Microsoft YaHei", "Noto Sans SC", sans-serif; font-size: 15px; fill: #687386; }
+    .band-label { font-family: "Microsoft YaHei", "Noto Sans SC", sans-serif; font-size: 17px; font-weight: 700; letter-spacing: 1px; }
+    .class-name { font-family: "Microsoft YaHei", "Noto Sans SC", sans-serif; font-size: 16px; font-weight: 700; fill: #202938; }
+    .stereo { font-family: "Microsoft YaHei", "Noto Sans SC", sans-serif; font-size: 11px; font-weight: 600; fill: #5c6879; }
+    .member { font-family: "Cascadia Mono", "Microsoft YaHei", monospace; font-size: 12px; fill: #364153; }
+    .relation { font-family: "Microsoft YaHei", "Noto Sans SC", sans-serif; font-size: 12px; fill: #5e6877; }
+    .mult { font-family: "Cascadia Mono", monospace; font-size: 11px; font-weight: 700; fill: #737c8c; }
+    .note { font-family: "Microsoft YaHei", "Noto Sans SC", sans-serif; font-size: 12px; fill: #6d7685; }
+    .legend { font-family: "Microsoft YaHei", "Noto Sans SC", sans-serif; font-size: 12px; fill: #5d6675; }
+  </style>
+</defs>
+<rect width="2300" height="1920" fill="#fbfcfe"/>
+<text class="title" x="1150.0" y="48" text-anchor="middle">图 3-2-2　智慧自习室预约与管理系统 UML 类图</text>
+<text class="subtitle" x="1150.0" y="75" text-anchor="middle">分析设计模型：当前代码以 FastAPI 函数实现，类图用于表达页面、业务控制和数据对象之间的职责与关系</text>
+
+<rect x="38" y="96" width="2224" height="238" rx="18" fill="#eef6ff" stroke="#c7dcf5" stroke-width="1.4" stroke-dasharray="7 6"/>
+<rect x="38" y="360" width="2224" height="506" rx="18" fill="#eefaf3" stroke="#c5e5d0" stroke-width="1.4" stroke-dasharray="7 6"/>
+<rect x="38" y="930" width="2224" height="920" rx="18" fill="#fff9e8" stroke="#eedaa2" stroke-width="1.4" stroke-dasharray="7 6"/>
+<text class="band-label" x="62" y="126" fill="#3e6fa8">Boundary　界面层</text>
+<text class="band-label" x="62" y="390" fill="#377a54">Control　业务控制层</text>
+<text class="band-label" x="62" y="960" fill="#947024">Entity　实体层</text>
+<g transform="translate(1890,108)"><rect x="0" y="0" width="320" height="70" rx="12" fill="#ffffffdd" stroke="#dce2ea"/>
+<rect x="16" y="16" width="12" height="12" rx="3" fill="#c8def8" stroke="#86a9d6"/><text class="legend" x="36" y="27">Boundary</text>
+<rect x="120" y="16" width="12" height="12" rx="3" fill="#c9ead5" stroke="#83bd98"/><text class="legend" x="140" y="27">Control</text>
+<rect x="216" y="16" width="12" height="12" rx="3" fill="#f5df9c" stroke="#c4a43f"/><text class="legend" x="236" y="27">Entity</text>
+<line x1="18" y1="49" x2="64" y2="49" stroke="#596273" stroke-width="1.6" marker-end="url(#arrowSmall)"/><text class="legend" x="76" y="53">调用 / 关联</text></g>
+<g filter="url(#shadow)"><rect x="90" y="145" width="540" height="160" rx="9" fill="#eef6ff" stroke="#6f95c7" stroke-width="1.5"/></g>
+<path d="M99 145h522a9 9 0 0 1 9 9v49h-540v-49a9 9 0 0 1 9-9z" fill="#c8def8"/>
+<line x1="90" y1="203" x2="630" y2="203" stroke="#6f95c7" stroke-width="1.2"/>
+<line x1="90" y1="237" x2="630" y2="237" stroke="#6f95c7" stroke-width="1" stroke-dasharray="3 3"/>
+<text class="stereo" x="104" y="163">«Boundary»</text>
+<text class="class-name" x="360.0" y="189" text-anchor="middle">LoginBoundary</text>
+<text class="member" x="105" y="223">- role: string</text>
+<text class="member" x="105" y="253">+ showLogin(): void</text>
+<text class="member" x="105" y="271">+ submitLogin(account, pwd): Session</text>
+<text class="member" x="105" y="289">+ showError(message): void</text>
+<g filter="url(#shadow)"><rect x="700" y="145" width="680" height="196" rx="9" fill="#eef6ff" stroke="#6f95c7" stroke-width="1.5"/></g>
+<path d="M709 145h662a9 9 0 0 1 9 9v49h-680v-49a9 9 0 0 1 9-9z" fill="#c8def8"/>
+<line x1="700" y1="203" x2="1380" y2="203" stroke="#6f95c7" stroke-width="1.2"/>
+<line x1="700" y1="237" x2="1380" y2="237" stroke="#6f95c7" stroke-width="1" stroke-dasharray="3 3"/>
+<text class="stereo" x="714" y="163">«Boundary»</text>
+<text class="class-name" x="1040.0" y="189" text-anchor="middle">StudentBoundary</text>
+<text class="member" x="715" y="223">- session: Session</text>
+<text class="member" x="715" y="253">+ showMyBookings(): void</text>
+<text class="member" x="715" y="271">+ showReservationForm(): void</text>
+<text class="member" x="715" y="289">+ showFeedbackForm(): void</text>
+<text class="member" x="715" y="307">+ showUserCenter(): void</text>
+<text class="member" x="715" y="325">+ showCreditProfile(): void</text>
+<g filter="url(#shadow)"><rect x="1450" y="145" width="670" height="196" rx="9" fill="#eef6ff" stroke="#6f95c7" stroke-width="1.5"/></g>
+<path d="M1459 145h652a9 9 0 0 1 9 9v49h-670v-49a9 9 0 0 1 9-9z" fill="#c8def8"/>
+<line x1="1450" y1="203" x2="2120" y2="203" stroke="#6f95c7" stroke-width="1.2"/>
+<line x1="1450" y1="237" x2="2120" y2="237" stroke="#6f95c7" stroke-width="1" stroke-dasharray="3 3"/>
+<text class="stereo" x="1464" y="163">«Boundary»</text>
+<text class="class-name" x="1785.0" y="189" text-anchor="middle">AdminBoundary</text>
+<text class="member" x="1465" y="223">- session: Session</text>
+<text class="member" x="1465" y="253">+ showDashboard(): void</text>
+<text class="member" x="1465" y="271">+ showSeatManagement(): void</text>
+<text class="member" x="1465" y="289">+ showUserManagement(): void</text>
+<text class="member" x="1465" y="307">+ showComplaintManagement(): void</text>
+<text class="member" x="1465" y="325">+ showAnalytics(): void</text>
+<g filter="url(#shadow)"><rect x="80" y="420" width="440" height="142" rx="9" fill="#f0fbf4" stroke="#72a985" stroke-width="1.5"/></g>
+<path d="M89 420h422a9 9 0 0 1 9 9v49h-440v-49a9 9 0 0 1 9-9z" fill="#c9ead5"/>
+<line x1="80" y1="478" x2="520" y2="478" stroke="#72a985" stroke-width="1.2"/>
+<line x1="80" y1="512" x2="520" y2="512" stroke="#72a985" stroke-width="1" stroke-dasharray="3 3"/>
+<text class="stereo" x="94" y="438">«Control»</text>
+<text class="class-name" x="300.0" y="464" text-anchor="middle">AuthControl</text>
+<text class="member" x="95" y="498">- session: Session</text>
+<text class="member" x="95" y="528">+ login(account, pwd): Session</text>
+<text class="member" x="95" y="546">+ changePassword(userId, old, new): bool</text>
+<g filter="url(#shadow)"><rect x="560" y="420" width="520" height="178" rx="9" fill="#f0fbf4" stroke="#72a985" stroke-width="1.5"/></g>
+<path d="M569 420h502a9 9 0 0 1 9 9v49h-520v-49a9 9 0 0 1 9-9z" fill="#c9ead5"/>
+<line x1="560" y1="478" x2="1080" y2="478" stroke="#72a985" stroke-width="1.2"/>
+<line x1="560" y1="512" x2="1080" y2="512" stroke="#72a985" stroke-width="1" stroke-dasharray="3 3"/>
+<text class="stereo" x="574" y="438">«Control»</text>
+<text class="class-name" x="820.0" y="464" text-anchor="middle">ReservationControl</text>
+<text class="member" x="575" y="498">- conflictPolicy: string</text>
+<text class="member" x="575" y="528">+ createBooking(req): Reservation</text>
+<text class="member" x="575" y="546">+ updateStatus(id, status): bool</text>
+<text class="member" x="575" y="564">+ queryBookings(userId): List&lt;Reservation&gt;</text>
+<text class="member" x="575" y="582">+ checkConflict(seatId, time): bool</text>
+<g filter="url(#shadow)"><rect x="1120" y="420" width="440" height="160" rx="9" fill="#f0fbf4" stroke="#72a985" stroke-width="1.5"/></g>
+<path d="M1129 420h422a9 9 0 0 1 9 9v49h-440v-49a9 9 0 0 1 9-9z" fill="#c9ead5"/>
+<line x1="1120" y1="478" x2="1560" y2="478" stroke="#72a985" stroke-width="1.2"/>
+<line x1="1120" y1="512" x2="1560" y2="512" stroke="#72a985" stroke-width="1" stroke-dasharray="3 3"/>
+<text class="stereo" x="1134" y="438">«Control»</text>
+<text class="class-name" x="1340.0" y="464" text-anchor="middle">SeatControl</text>
+<text class="member" x="1135" y="498">- maintenancePolicy: string</text>
+<text class="member" x="1135" y="528">+ querySeats(): List&lt;Seat&gt;</text>
+<text class="member" x="1135" y="546">+ updateStatus(id, status, note): bool</text>
+<text class="member" x="1135" y="564">+ restore(id): bool</text>
+<g filter="url(#shadow)"><rect x="1600" y="420" width="540" height="178" rx="9" fill="#f0fbf4" stroke="#72a985" stroke-width="1.5"/></g>
+<path d="M1609 420h522a9 9 0 0 1 9 9v49h-540v-49a9 9 0 0 1 9-9z" fill="#c9ead5"/>
+<line x1="1600" y1="478" x2="2140" y2="478" stroke="#72a985" stroke-width="1.2"/>
+<line x1="1600" y1="512" x2="2140" y2="512" stroke="#72a985" stroke-width="1" stroke-dasharray="3 3"/>
+<text class="stereo" x="1614" y="438">«Control»</text>
+<text class="class-name" x="1870.0" y="464" text-anchor="middle">UserControl</text>
+<text class="member" x="1615" y="498">- importPolicy: string</text>
+<text class="member" x="1615" y="528">+ queryUsers(): List&lt;User&gt;</text>
+<text class="member" x="1615" y="546">+ updateUser(id, info): void</text>
+<text class="member" x="1615" y="564">+ manageBlacklist(userId, info): void</text>
+<text class="member" x="1615" y="582">+ importCsv(file): ImportResult</text>
+<g filter="url(#shadow)"><rect x="220" y="650" width="500" height="160" rx="9" fill="#f0fbf4" stroke="#72a985" stroke-width="1.5"/></g>
+<path d="M229 650h482a9 9 0 0 1 9 9v49h-500v-49a9 9 0 0 1 9-9z" fill="#c9ead5"/>
+<line x1="220" y1="708" x2="720" y2="708" stroke="#72a985" stroke-width="1.2"/>
+<line x1="220" y1="742" x2="720" y2="742" stroke="#72a985" stroke-width="1" stroke-dasharray="3 3"/>
+<text class="stereo" x="234" y="668">«Control»</text>
+<text class="class-name" x="470.0" y="694" text-anchor="middle">FeedbackControl</text>
+<text class="member" x="235" y="728">- statusFlow: string</text>
+<text class="member" x="235" y="758">+ submitComplaint(req): Complaint</text>
+<text class="member" x="235" y="776">+ queryComplaints(userId): List&lt;Complaint&gt;</text>
+<text class="member" x="235" y="794">+ replyComplaint(id, reply): void</text>
+<g filter="url(#shadow)"><rect x="770" y="650" width="540" height="194" rx="9" fill="#f0fbf4" stroke="#72a985" stroke-width="1.5"/></g>
+<path d="M779 650h522a9 9 0 0 1 9 9v49h-540v-49a9 9 0 0 1 9-9z" fill="#c9ead5"/>
+<line x1="770" y1="708" x2="1310" y2="708" stroke="#72a985" stroke-width="1.2"/>
+<line x1="770" y1="776" x2="1310" y2="776" stroke="#72a985" stroke-width="1" stroke-dasharray="3 3"/>
+<text class="stereo" x="784" y="668">«Control»</text>
+<text class="class-name" x="1040.0" y="694" text-anchor="middle">CreditControl</text>
+<text class="member" x="785" y="728">- baseScore: float = 5.0</text>
+<text class="member" x="785" y="746">- penalty: float = 0.4</text>
+<text class="member" x="785" y="764">- recoveryDays: int = 90</text>
+<text class="member" x="785" y="792">+ calculateRating(): float</text>
+<text class="member" x="785" y="810">+ syncRating(userId): float</text>
+<text class="member" x="785" y="828">+ getProfile(userId): CreditProfile</text>
+<g filter="url(#shadow)"><rect x="1360" y="650" width="560" height="160" rx="9" fill="#f0fbf4" stroke="#72a985" stroke-width="1.5"/></g>
+<path d="M1369 650h542a9 9 0 0 1 9 9v49h-560v-49a9 9 0 0 1 9-9z" fill="#c9ead5"/>
+<line x1="1360" y1="708" x2="1920" y2="708" stroke="#72a985" stroke-width="1.2"/>
+<line x1="1360" y1="742" x2="1920" y2="742" stroke="#72a985" stroke-width="1" stroke-dasharray="3 3"/>
+<text class="stereo" x="1374" y="668">«Control»</text>
+<text class="class-name" x="1640.0" y="694" text-anchor="middle">AnalyticsControl</text>
+<text class="member" x="1375" y="728">- refreshSeconds: int = 10</text>
+<text class="member" x="1375" y="758">+ getOverview(): Overview</text>
+<text class="member" x="1375" y="776">+ getAnalytics(): Analytics</text>
+<text class="member" x="1375" y="794">+ getPopularSeats(): List&lt;SeatStat&gt;</text>
+<g filter="url(#shadow)"><rect x="760" y="950" width="420" height="212" rx="9" fill="#fffaf0" stroke="#b28c2f" stroke-width="1.5"/></g>
+<path d="M769 950h402a9 9 0 0 1 9 9v49h-420v-49a9 9 0 0 1 9-9z" fill="#f5df9c"/>
+<line x1="760" y1="1008" x2="1180" y2="1008" stroke="#b28c2f" stroke-width="1.2"/>
+<line x1="760" y1="1112" x2="1180" y2="1112" stroke="#b28c2f" stroke-width="1" stroke-dasharray="3 3"/>
+<text class="stereo" x="774" y="968">«Entity» abstract</text>
+<text class="class-name" x="970.0" y="994" text-anchor="middle">User</text>
+<text class="member" x="775" y="1028">- id: int</text>
+<text class="member" x="775" y="1046">- name: string</text>
+<text class="member" x="775" y="1064">- phone: string</text>
+<text class="member" x="775" y="1082">- password: string</text>
+<text class="member" x="775" y="1100">- role: string</text>
+<text class="member" x="775" y="1128">+ authenticate(pwd): bool</text>
+<text class="member" x="775" y="1146">+ updateInfo(info): void</text>
+<g filter="url(#shadow)"><rect x="1230" y="950" width="450" height="212" rx="9" fill="#fdf5ff" stroke="#9e6ca5" stroke-width="1.5"/></g>
+<path d="M1239 950h432a9 9 0 0 1 9 9v49h-450v-49a9 9 0 0 1 9-9z" fill="#efd9f2"/>
+<line x1="1230" y1="1008" x2="1680" y2="1008" stroke="#9e6ca5" stroke-width="1.2"/>
+<line x1="1230" y1="1112" x2="1680" y2="1112" stroke="#9e6ca5" stroke-width="1" stroke-dasharray="3 3"/>
+<text class="stereo" x="1244" y="968">«Entity» derived</text>
+<text class="class-name" x="1455.0" y="994" text-anchor="middle">CreditProfile</text>
+<text class="member" x="1245" y="1028">- score: float</text>
+<text class="member" x="1245" y="1046">- level: string</text>
+<text class="member" x="1245" y="1064">- activeViolationCount: int</text>
+<text class="member" x="1245" y="1082">- totalViolationCount: int</text>
+<text class="member" x="1245" y="1100">- recoveryDays: int</text>
+<text class="member" x="1245" y="1128">+ calculateLevel(): string</text>
+<text class="member" x="1245" y="1146">+ nextRecoveryDate(): string</text>
+<g filter="url(#shadow)"><rect x="1720" y="950" width="430" height="230" rx="9" fill="#fffaf0" stroke="#b28c2f" stroke-width="1.5"/></g>
+<path d="M1729 950h412a9 9 0 0 1 9 9v49h-430v-49a9 9 0 0 1 9-9z" fill="#f5df9c"/>
+<line x1="1720" y1="1008" x2="2150" y2="1008" stroke="#b28c2f" stroke-width="1.2"/>
+<line x1="1720" y1="1130" x2="2150" y2="1130" stroke="#b28c2f" stroke-width="1" stroke-dasharray="3 3"/>
+<text class="stereo" x="1734" y="968">«Entity»</text>
+<text class="class-name" x="1935.0" y="994" text-anchor="middle">Classroom</text>
+<text class="member" x="1735" y="1028">- id: int</text>
+<text class="member" x="1735" y="1046">- name: string</text>
+<text class="member" x="1735" y="1064">- building: string</text>
+<text class="member" x="1735" y="1082">- floor: string</text>
+<text class="member" x="1735" y="1100">- capacity: int</text>
+<text class="member" x="1735" y="1118">- status: string</text>
+<text class="member" x="1735" y="1146">+ seatCount(): int</text>
+<text class="member" x="1735" y="1164">+ availabilityStatus(): string</text>
+<g filter="url(#shadow)"><rect x="360" y="1210" width="450" height="212" rx="9" fill="#fffaf0" stroke="#b28c2f" stroke-width="1.5"/></g>
+<path d="M369 1210h432a9 9 0 0 1 9 9v49h-450v-49a9 9 0 0 1 9-9z" fill="#f5df9c"/>
+<line x1="360" y1="1268" x2="810" y2="1268" stroke="#b28c2f" stroke-width="1.2"/>
+<line x1="360" y1="1372" x2="810" y2="1372" stroke="#b28c2f" stroke-width="1" stroke-dasharray="3 3"/>
+<text class="stereo" x="374" y="1228">«Entity»</text>
+<text class="class-name" x="585.0" y="1254" text-anchor="middle">Student</text>
+<text class="member" x="375" y="1288">- studentNo: string</text>
+<text class="member" x="375" y="1306">- violations: int</text>
+<text class="member" x="375" y="1324">- rating: float</text>
+<text class="member" x="375" y="1342">- blacklisted: bool</text>
+<text class="member" x="375" y="1360">- blacklistUntil: string</text>
+<text class="member" x="375" y="1388">+ canBook(): bool</text>
+<text class="member" x="375" y="1406">+ getCreditProfile(): CreditProfile</text>
+<g filter="url(#shadow)"><rect x="860" y="1210" width="400" height="142" rx="9" fill="#fffaf0" stroke="#b28c2f" stroke-width="1.5"/></g>
+<path d="M869 1210h382a9 9 0 0 1 9 9v49h-400v-49a9 9 0 0 1 9-9z" fill="#f5df9c"/>
+<line x1="860" y1="1268" x2="1260" y2="1268" stroke="#b28c2f" stroke-width="1.2"/>
+<line x1="860" y1="1302" x2="1260" y2="1302" stroke="#b28c2f" stroke-width="1" stroke-dasharray="3 3"/>
+<text class="stereo" x="874" y="1228">«Entity»</text>
+<text class="class-name" x="1060.0" y="1254" text-anchor="middle">Admin</text>
+<text class="member" x="875" y="1288">- account: string</text>
+<text class="member" x="875" y="1318">+ manageUser(id, info): void</text>
+<text class="member" x="875" y="1336">+ reviewComplaint(id, reply): void</text>
+<g filter="url(#shadow)"><rect x="1660" y="1210" width="480" height="248" rx="9" fill="#fffaf0" stroke="#b28c2f" stroke-width="1.5"/></g>
+<path d="M1669 1210h462a9 9 0 0 1 9 9v49h-480v-49a9 9 0 0 1 9-9z" fill="#f5df9c"/>
+<line x1="1660" y1="1268" x2="2140" y2="1268" stroke="#b28c2f" stroke-width="1.2"/>
+<line x1="1660" y1="1390" x2="2140" y2="1390" stroke="#b28c2f" stroke-width="1" stroke-dasharray="3 3"/>
+<text class="stereo" x="1674" y="1228">«Entity»</text>
+<text class="class-name" x="1900.0" y="1254" text-anchor="middle">Seat</text>
+<text class="member" x="1675" y="1288">- id: int</text>
+<text class="member" x="1675" y="1306">- name: string</text>
+<text class="member" x="1675" y="1324">- classroomId: int</text>
+<text class="member" x="1675" y="1342">- capacity: int</text>
+<text class="member" x="1675" y="1360">- status: string</text>
+<text class="member" x="1675" y="1378">- statusNote: string</text>
+<text class="member" x="1675" y="1406">+ isAvailable(time): bool</text>
+<text class="member" x="1675" y="1424">+ maintain(note): void</text>
+<text class="member" x="1675" y="1442">+ restore(note): void</text>
+<g filter="url(#shadow)"><rect x="360" y="1490" width="500" height="302" rx="9" fill="#fffaf0" stroke="#b28c2f" stroke-width="1.5"/></g>
+<path d="M369 1490h482a9 9 0 0 1 9 9v49h-500v-49a9 9 0 0 1 9-9z" fill="#f5df9c"/>
+<line x1="360" y1="1548" x2="860" y2="1548" stroke="#b28c2f" stroke-width="1.2"/>
+<line x1="360" y1="1706" x2="860" y2="1706" stroke="#b28c2f" stroke-width="1" stroke-dasharray="3 3"/>
+<text class="stereo" x="374" y="1508">«Entity»</text>
+<text class="class-name" x="610.0" y="1534" text-anchor="middle">Reservation</text>
+<text class="member" x="375" y="1568">- id: int</text>
+<text class="member" x="375" y="1586">- userId: int</text>
+<text class="member" x="375" y="1604">- seatId: int</text>
+<text class="member" x="375" y="1622">- startAt: string</text>
+<text class="member" x="375" y="1640">- endAt: string</text>
+<text class="member" x="375" y="1658">- status: string</text>
+<text class="member" x="375" y="1676">- lateMinutes: int</text>
+<text class="member" x="375" y="1694">- earlyMinutes: int</text>
+<text class="member" x="375" y="1722">+ create(req): Reservation</text>
+<text class="member" x="375" y="1740">+ cancel(): void</text>
+<text class="member" x="375" y="1758">+ checkIn(time): void</text>
+<text class="member" x="375" y="1776">+ complete(time): void</text>
+<g filter="url(#shadow)"><rect x="900" y="1490" width="430" height="248" rx="9" fill="#fffaf0" stroke="#b28c2f" stroke-width="1.5"/></g>
+<path d="M909 1490h412a9 9 0 0 1 9 9v49h-430v-49a9 9 0 0 1 9-9z" fill="#f5df9c"/>
+<line x1="900" y1="1548" x2="1330" y2="1548" stroke="#b28c2f" stroke-width="1.2"/>
+<line x1="900" y1="1688" x2="1330" y2="1688" stroke="#b28c2f" stroke-width="1" stroke-dasharray="3 3"/>
+<text class="stereo" x="914" y="1508">«Entity»</text>
+<text class="class-name" x="1115.0" y="1534" text-anchor="middle">Complaint</text>
+<text class="member" x="915" y="1568">- id: int</text>
+<text class="member" x="915" y="1586">- userId: int</text>
+<text class="member" x="915" y="1604">- seatId: int?</text>
+<text class="member" x="915" y="1622">- category: string</text>
+<text class="member" x="915" y="1640">- subject: string</text>
+<text class="member" x="915" y="1658">- status: string</text>
+<text class="member" x="915" y="1676">- reply: string</text>
+<text class="member" x="915" y="1704">+ submit(req): Complaint</text>
+<text class="member" x="915" y="1722">+ reply(content): void</text>
+<g filter="url(#shadow)"><rect x="1380" y="1490" width="430" height="214" rx="9" fill="#fffaf0" stroke="#b28c2f" stroke-width="1.5"/></g>
+<path d="M1389 1490h412a9 9 0 0 1 9 9v49h-430v-49a9 9 0 0 1 9-9z" fill="#f5df9c"/>
+<line x1="1380" y1="1548" x2="1810" y2="1548" stroke="#b28c2f" stroke-width="1.2"/>
+<line x1="1380" y1="1670" x2="1810" y2="1670" stroke="#b28c2f" stroke-width="1" stroke-dasharray="3 3"/>
+<text class="stereo" x="1394" y="1508">«Entity»</text>
+<text class="class-name" x="1595.0" y="1534" text-anchor="middle">Violation</text>
+<text class="member" x="1395" y="1568">- id: int</text>
+<text class="member" x="1395" y="1586">- userId: int</text>
+<text class="member" x="1395" y="1604">- bookingId: int?</text>
+<text class="member" x="1395" y="1622">- reason: string</text>
+<text class="member" x="1395" y="1640">- source: string</text>
+<text class="member" x="1395" y="1658">- createdAt: string</text>
+<text class="member" x="1395" y="1686">+ applyCreditImpact(): void</text>
+<line x1="360.0" y1="305" x2="300" y2="416" stroke="#6e7b8c" stroke-width="1.5" stroke-dasharray="6 5" marker-end="url(#arrow)"/>
+<text class="relation" x="342.0" y="360.5" >调用</text>
+<line x1="1040.0" y1="341" x2="830" y2="416" stroke="#6e7b8c" stroke-width="1.5" stroke-dasharray="6 5" marker-end="url(#arrow)"/>
+<text class="relation" x="947.0" y="378.5" >调用</text>
+<line x1="1785.0" y1="341" x2="1850" y2="416" stroke="#6e7b8c" stroke-width="1.5" stroke-dasharray="6 5" marker-end="url(#arrow)"/>
+<text class="relation" x="1829.5" y="378.5" >调用</text>
+<line x1="1150" y1="890" x2="1150" y2="946" stroke="#6e7b8c" stroke-width="1.7" stroke-dasharray="6 5" marker-end="url(#arrow)"/>
+<rect x="1168" y="900" width="210" height="28" rx="13" fill="#ffffffdd" stroke="#d9e0e8"/><text class="relation" x="1273" y="919" text-anchor="middle">读写 Entity 数据</text>
+<line x1="585.0" y1="1210" x2="970.0" y2="1162" stroke="#596273" stroke-width="1.5" marker-end="url(#triangle)"/>
+<text class="relation" x="555" y="1190.0" text-anchor="middle">继承</text>
+<line x1="1060.0" y1="1210" x2="970.0" y2="1162" stroke="#596273" stroke-width="1.5" marker-end="url(#triangle)"/>
+<text class="relation" x="1050" y="1190.0" text-anchor="middle">继承</text>
+<line x1="1180" y1="1056.0" x2="1230" y2="1056.0" stroke="#815b88" stroke-width="1.4" stroke-dasharray="5 4" marker-end="url(#arrowSmall)"/>
+<text class="relation" x="1205.0" y="1036.0" text-anchor="middle">派生</text>
+<line x1="1935.0" y1="1180" x2="1900.0" y2="1210" stroke="#596273" stroke-width="1.5" marker-end="url(#arrowSmall)"/>
+<text class="mult" x="1952.5" y="1195">1　..　*</text>
+<line x1="585.0" y1="1422" x2="610.0" y2="1490" stroke="#596273" stroke-width="1.5" marker-end="url(#arrowSmall)"/>
+<text class="mult" x="500" y="1463">1　..　*</text><text class="relation" x="535" y="1482">预约</text>
+<path d="M 610.0 1792 L 610.0 1832 L 1595.0 1832 L 1595.0 1704" fill="none" stroke="#596273" stroke-width="1.3" marker-end="url(#arrowSmall)"/>
+<text class="mult" x="1010" y="1826">0..1　..　*</text><text class="relation" x="900" y="1814">产生违约</text>
+<line x1="60" y1="1863" x2="2240" y2="1863" stroke="#e1e5eb" stroke-width="1"/>
+<text class="note" x="60" y="1891">说明：SignIn、BlackList、UserLog 分别嵌入 Reservation、User 和业务记录；Student 与 Complaint、Violation 为一对多关系，Complaint 可选关联 Seat。</text>
+</svg>
