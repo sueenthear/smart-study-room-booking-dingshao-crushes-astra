@@ -1,0 +1,14 @@
+TC编号：TC-I03
+场景：匿名访问管理接口一律 401（AC-11 / NFR-02）
+用例全名：tests.test_auth_permission.PermissionApiTests.test_tc_i03_anonymous_rejected
+代码版本：7416c19
+环境：Windows-11-10.0.26200-SP0 / Python 3.13.14 / uv 0.13.5 (46776a95d 2026-10-21 x86_64-pc-windows-msvc)
+命令：uv run python -m unittest tests.test_auth_permission.PermissionApiTests.test_tc_i03_anonymous_rejected -v
+结果：PASS
+原始输出：
+test_tc_i03_anonymous_rejected (tests.test_auth_permission.PermissionApiTests.test_tc_i03_anonymous_rejected) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 0.024s
+
+OK

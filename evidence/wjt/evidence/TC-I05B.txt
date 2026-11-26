@@ -1,0 +1,15 @@
+TC编号：TC-I05B
+场景：安全不变量：违约查询不得泄露他人记录（BR-11）
+用例全名：tests.test_auth_permission.PermissionApiTests.test_tc_i05b_violation_query_does_not_leak_others
+代码版本：7416c19
+环境：Windows-11-10.0.26200-SP0 / Python 3.13.14 / uv 0.13.5 (46776a95d 2026-10-21 x86_64-pc-windows-msvc)
+命令：uv run python -m unittest tests.test_auth_permission.PermissionApiTests.test_tc_i05b_violation_query_does_not_leak_others -v
+结果：PASS
+原始输出：
+test_tc_i05b_violation_query_does_not_leak_others (tests.test_auth_permission.PermissionApiTests.test_tc_i05b_violation_query_does_not_leak_others)
+安全不变量：学生无论如何构造参数，都不得拿到他人数据。 ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 0.036s
+
+OK

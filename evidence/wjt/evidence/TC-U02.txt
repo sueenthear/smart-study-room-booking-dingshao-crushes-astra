@@ -1,0 +1,14 @@
+TC编号：TC-U02
+场景：信用分：1 次违约扣 0.4 → 4.6（BR-09）
+用例全名：tests.test_auth_permission.CreditRatingTests.test_tc_u02_one_violation_deducts_point_four
+代码版本：7416c19
+环境：Windows-11-10.0.26200-SP0 / Python 3.13.14 / uv 0.13.5 (46776a95d 2026-10-21 x86_64-pc-windows-msvc)
+命令：uv run python -m unittest tests.test_auth_permission.CreditRatingTests.test_tc_u02_one_violation_deducts_point_four -v
+结果：PASS
+原始输出：
+test_tc_u02_one_violation_deducts_point_four (tests.test_auth_permission.CreditRatingTests.test_tc_u02_one_violation_deducts_point_four) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+OK

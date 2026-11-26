@@ -1,0 +1,37 @@
+TC-I01   PASS       管理员登录并读取身份（AC-01）
+TC-I02   PASS       学生登录返回 token 与学号（AC-01）
+TC-I03   PASS       匿名访问管理接口一律 401（AC-11 / NFR-02）
+TC-I04   PASS       学生访问管理接口一律 403（AC-11 / BR-11）
+TC-I05   PASS       学生读他人预约、信用、投诉一律 403（BR-11）
+TC-I05B  PASS       安全不变量：违约查询不得泄露他人记录（BR-11）
+TC-I05C  SKIPPED（待裁决：越权读是否一律 403（候选 BR-22，业务确认人未定）） 越权读应一律 403（待裁决：候选 BR-22）
+TC-I06   PASS       投诉四类提交并正确落库（FR-12）
+TC-I07   PASS       学生只看到本人投诉（BR-11）
+TC-I08   PASS       管理员回复投诉后学生可见（AC-09）
+TC-I09   PASS       黑名单到期自动释放（FR-14）
+TC-I10   PASS       修改密码后其他会话失效、当前会话保留（FR-01）
+TC-I11   EXPECTED FAILURE（决定已下、实现未到） BR-21 差距：未填解封日期应被拒绝（当前补默认 7 天）
+TC-I12   EXPECTED FAILURE（决定已下、实现未到） BR-11 差距：受限账号创建预约应返回 403（当前 400）
+TC-U01   PASS       信用分：0 次违约 → 基础分 5.0（BR-09）
+TC-U02   PASS       信用分：1 次违约扣 0.4 → 4.6（BR-09）
+TC-U03   PASS       信用分：5 次违约 → 3.0（BR-09）
+TC-U04   PASS       信用分：12 次及以上触底 1.0 不再下降（BR-09）
+TC-U05   PASS       信用等级：5.0 → excellent 信用优秀
+TC-U06   PASS       信用等级：4.6 → good 信用良好
+TC-U07   PASS       信用等级：4.2 → watch 需要保持
+TC-U08   PASS       信用等级：3.4 → high_risk 高风险
+TC-U09   PASS       90 天截止时间：格式为分钟精度 YYYY-MM-DD HH:MM（BR-10）
+TC-U10   PASS       90 天截止时间：与当前时间相差 90 天（BR-10）
+TC-U11   PASS       黑名单日期归一化：非黑名单返回 None（BR-11）
+TC-U12   PASS       黑名单日期归一化：仅填日期时补足当天 23:59（BR-11）
+TC-U13   PASS       黑名单日期归一化：日期时间原样保留到分钟（BR-11）
+TC-U14   PASS       黑名单日期归一化：非法格式抛 HTTPException 400（BR-11）
+TC-U14B  EXPECTED FAILURE（决定已下、实现未到） BR-21 差距：空解封日期应被拒绝、不得补默认 7 天（当前未实现）
+TC-U15   PASS       账号快照：正常账号 days_remaining 为空且不含 password（FR-14 / Q-P03）
+TC-U16   PASS       账号快照：受限未到期与已过期未释放两种情形（FR-14）
+TC-U17   PASS       token 摘要：同一 token 两次一致（NFR-02）
+TC-U18   PASS       token 摘要：不同 token 不同且为 64 位十六进制（NFR-02）
+TC-U19   PASS       Bearer 解析：合法头返回 token，scheme 大小写不敏感（NFR-02）
+TC-U20   PASS       Bearer 解析：缺失、空串、无前缀一律抛 401（NFR-02）
+
+合计 35 个用例

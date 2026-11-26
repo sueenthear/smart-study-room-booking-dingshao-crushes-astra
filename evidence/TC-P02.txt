@@ -1,0 +1,31 @@
+案例编号：TC-P02（同一座位 100 线程并发预约）
+测试目标：验证并发下是否只生成一条有效预约
+代码版本：1.1 / 2026-11-26（项目无 Git，按版本标签 + 日期标注）
+环境：Windows cmd；Python 3.12；uv 0.13.1；SQLite（测试用临时库，不碰 app/study_room.db）
+执行人：郑晨宇　　日期：2026-11-26
+预期出处：01_需求规格说明书.md AC-12（只成功一条）、BR-01、NFR-01
+
+命令：
+uv run python -m unittest tests.test_security_and_concurrency.SecurityAndConcurrencyTests.test_concurrent_bookings_are_serialized -v
+
+说明：项目已有测试，内部用 100 线程 + Barrier 同时向同一座位同一时段提交预约，
+断言恰好 1 个 200、99 个 409，且数据库有效预约数为 1。测试自带临时数据库，未改动演示数据。
+
+===== 以下为命令原始输出 =====
+warning: The `tool.uv.dev-dependencies` field (used in `pyproject.toml`) is deprecated and will be removed in a future release; use `dependency-groups.dev` instead
+test_concurrent_bookings_are_serialized (tests.test_security_and_concurrency.SecurityAndConcurrencyTests.test_concurrent_bookings_are_serialized) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 1.243s
+
+OK
+===== 原始输出结束 =====
+
+结果解读（不改变上面的原始输出）：
+测试通过 → 100 个并发请求中恰好 1 个成功、99 个被拒，数据库只剩 1 条有效预约。
+文档 AC-12 标注"未验证（V-02）"、NFR-01 标注"未满足：无数据库约束"，与实际结果不符。
+补充事实：实现方式是 main.py:872 的 BEGIN IMMEDIATE 事务锁，而非数据库唯一约束，
+效果达标但与 BR-01"待加数据库唯一约束"的描述路径不同，如实记录。
+
+实际是否符合预期：符合（并发只成功一条，与 AC-12 预期一致）
+待判责：文档状态与实际不符 → 见 判责记录.md 的 TC-P02 行

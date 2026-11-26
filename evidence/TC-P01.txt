@@ -1,0 +1,31 @@
+案例编号：TC-P01（学生越权调用管理员接口）
+测试目标：验证服务端是否拦截学生调用管理员接口
+代码版本：1.1 / 2026-11-26（项目无 Git，按版本标签 + 日期标注）
+环境：Windows；Uvicorn 本地服务 127.0.0.1:8000；SQLite app/study_room.db
+执行人：郑晨宇　　日期：2026-11-26
+预期出处：01_需求规格说明书.md AC-11、NFR-02（学生调用管理接口应被拒绝）
+
+命令：
+curl -i -H "Authorization: Bearer vIJVZ-WpjuKJvVAFKONUW1WotcLxsvEFzyhRyiboC_U" http://127.0.0.1:8000/api/users
+
+说明：token 由学生账号 2024010201 登录获得；本次只执行 GET 查询，未做写操作，未改动数据库。
+
+===== 以下为命令原始输出 =====
+  % Total    % Received % Xferd  Average Speed  Time    Time    Time   Current
+                                 Dload  Upload  Total   Spent   Left   Speed
+  0      0   0      0   0      0      0      0                              0100     43 100     43   0      0   5994      0                              0100     43 100     43   0      0   5493      0                              0100     43 100     43   0      0   5085      0                              0
+HTTP/1.1 403 Forbidden
+date: Thu, 26 Nov 2026 08:40:38 GMT
+server: uvicorn
+content-length: 43
+content-type: application/json
+
+{"detail":"仅管理员可执行此操作"}
+===== 原始输出结束 =====
+
+结果解读（不改变上面的原始输出）：
+响应码 403，响应体"仅管理员可执行此操作" → 服务端确实拦截了学生访问管理员接口。
+文档 AC-11 标注"未通过（V-01）"、NFR-02 标注"未满足：仅前端隔离"，与实际结果不符。
+
+实际是否符合预期：符合（接口被拒绝，与 AC-11 预期一致）
+待判责：文档状态与实际不符 → 见 判责记录.md 的 TC-P01 行

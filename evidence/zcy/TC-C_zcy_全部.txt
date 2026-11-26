@@ -1,0 +1,55 @@
+案例编号：TC-C-U01～U20、TC-C-I01～I10（TASK-001 郑晨宇）
+代码版本：仓库提交 7416c19（main，含 PR #4 取消预约修复）
+环境：Windows 11 / Python 3.12.2 / uv 0.13.1
+预期出处：01_需求规格说明书.md v2.0 的 FR-09/FR-11/FR-12/FR-13、BR-07/BR-09/BR-10/BR-11、AC-10；
+          追不到需求的（等级阈值名称、日期格式）标「当前实现行为，仅作重构安全网」
+命令：uv run python -m unittest tests.test_credit_zcy -v > evidence\TC-C_zcy_全部.txt 2>&1
+执行人：郑晨宇　日期：2026-11-26
+----------------------------------------------------------------------
+以下为原始输出（未经修改）：
+
+warning: The `tool.uv.dev-dependencies` field (used in `pyproject.toml`) is deprecated and will be removed in a future release; use `dependency-groups.dev` instead
+test_c_u10_89_day_record_counts (tests.test_credit_zcy.ActiveViolationUnitTests.test_c_u10_89_day_record_counts) ... ok
+test_c_u11_90_day_record_counts (tests.test_credit_zcy.ActiveViolationUnitTests.test_c_u11_90_day_record_counts) ... ok
+test_c_u12_91_day_record_does_not_count (tests.test_credit_zcy.ActiveViolationUnitTests.test_c_u12_91_day_record_does_not_count) ... ok
+test_c_u15_backfills_missing_records (tests.test_credit_zcy.BackfillUnitTests.test_c_u15_backfills_missing_records) ... ok
+test_c_u16_backfill_is_idempotent (tests.test_credit_zcy.BackfillUnitTests.test_c_u16_backfill_is_idempotent) ... ok
+test_c_i01_violation_deducts_credit (tests.test_credit_zcy.CreditApiTests.test_c_i01_violation_deducts_credit) ... ok
+test_c_i02_credit_floor_is_one (tests.test_credit_zcy.CreditApiTests.test_c_i02_credit_floor_is_one) ... ok
+test_c_i03_late_15_minutes_does_not_create_violation (tests.test_credit_zcy.CreditApiTests.test_c_i03_late_15_minutes_does_not_create_violation) ... ok
+test_c_i04_expired_violation_recovers_credit (tests.test_credit_zcy.CreditApiTests.test_c_i04_expired_violation_recovers_credit) ... ok
+test_c_i05_credit_profile_exposes_level (tests.test_credit_zcy.CreditApiTests.test_c_i05_credit_profile_exposes_level) ... ok
+test_c_i06_admin_manual_violation_syncs_rating (tests.test_credit_zcy.CreditApiTests.test_c_i06_admin_manual_violation_syncs_rating) ... ok
+test_c_i07_expired_blacklist_released (tests.test_credit_zcy.CreditApiTests.test_c_i07_expired_blacklist_released) ... ok
+test_c_i08_blacklisted_booking_returns_403 (tests.test_credit_zcy.CreditApiTests.test_c_i08_blacklisted_booking_returns_403) ... expected failure
+test_c_i09_login_syncs_rating (tests.test_credit_zcy.CreditApiTests.test_c_i09_login_syncs_rating) ... ok
+test_c_i10_violation_query_scoped_to_self (tests.test_credit_zcy.CreditApiTests.test_c_i10_violation_query_scoped_to_self) ... ok
+test_c_u05_full_score_is_excellent (tests.test_credit_zcy.CreditLevelUnitTests.test_c_u05_full_score_is_excellent) ... ok
+test_c_u06_four_point_five_is_good (tests.test_credit_zcy.CreditLevelUnitTests.test_c_u06_four_point_five_is_good) ... ok
+test_c_u07_four_point_zero_is_watch (tests.test_credit_zcy.CreditLevelUnitTests.test_c_u07_four_point_zero_is_watch) ... ok
+test_c_u08_three_point_five_is_risk (tests.test_credit_zcy.CreditLevelUnitTests.test_c_u08_three_point_five_is_risk) ... ok
+test_c_u09_three_point_four_is_high_risk (tests.test_credit_zcy.CreditLevelUnitTests.test_c_u09_three_point_four_is_high_risk) ... ok
+test_c_u01_zero_violation_is_base_score (tests.test_credit_zcy.CreditRatingUnitTests.test_c_u01_zero_violation_is_base_score) ... ok
+test_c_u02_one_violation_deducts_point_four (tests.test_credit_zcy.CreditRatingUnitTests.test_c_u02_one_violation_deducts_point_four) ... ok
+test_c_u03_twelve_violations_reach_floor (tests.test_credit_zcy.CreditRatingUnitTests.test_c_u03_twelve_violations_reach_floor) ... ok
+test_c_u04_thirteen_violations_stay_at_floor (tests.test_credit_zcy.CreditRatingUnitTests.test_c_u04_thirteen_violations_stay_at_floor) ... ok
+test_c_u17_format_is_minute_precision (tests.test_credit_zcy.CutoffTextUnitTests.test_c_u17_format_is_minute_precision) ... ok
+test_c_u18_cutoff_is_ninety_days_ago (tests.test_credit_zcy.CutoffTextUnitTests.test_c_u18_cutoff_is_ninety_days_ago) ... ok
+test_c_u19_two_violations_is_four_point_two (tests.test_credit_zcy.RoundingUnitTests.test_c_u19_two_violations_is_four_point_two) ... ok
+test_c_u20_three_violations_is_three_point_eight (tests.test_credit_zcy.RoundingUnitTests.test_c_u20_three_violations_is_three_point_eight) ... ok
+test_c_u13_syncs_rating_from_active_violations (tests.test_credit_zcy.SyncRatingUnitTests.test_c_u13_syncs_rating_from_active_violations) ... ok
+test_c_u14_missing_user_returns_none (tests.test_credit_zcy.SyncRatingUnitTests.test_c_u14_missing_user_returns_none) ... ok
+
+----------------------------------------------------------------------
+Ran 30 tests in 0.326s
+
+OK (expected failures=1)
+----------------------------------------------------------------------
+结果解读（郑晨宇）：
+- 30 个用例：29 通过 + 1 expected failure = OK，无 FAIL、无 ERROR
+- 20 单元（U01～U20）全过：信用分公式、五档等级、90 天边界、同步、补录、日期格式
+- 10 集成（I01～I10）：I01～I07、I09、I10 通过
+- 唯一 expected failure 是 TC-C-I08（受限账号创建预约应 403）：BR-11 决定 400→403，
+  当前代码仍是 400，属「已决定待同步」。用 @expectedFailure 显式挂起，不算通过也不掩盖差距。
+- 首轮曾因测试代码字段名写错（score→rating、level→credit_level）跑出 6 ERROR+1 FAIL，
+  已修正测试代码（预期值未改），本轮为修复后结果。纠错过程留 trace 属 AI/人工纠错案例。

@@ -1,0 +1,14 @@
+TC编号：TC-I08
+场景：管理员回复投诉后学生可见（AC-09）
+用例全名：tests.test_auth_permission.PermissionApiTests.test_tc_i08_admin_reply_visible_to_student
+代码版本：7416c19
+环境：Windows-11-10.0.26200-SP0 / Python 3.13.14 / uv 0.13.5 (46776a95d 2026-10-21 x86_64-pc-windows-msvc)
+命令：uv run python -m unittest tests.test_auth_permission.PermissionApiTests.test_tc_i08_admin_reply_visible_to_student -v
+结果：PASS
+原始输出：
+test_tc_i08_admin_reply_visible_to_student (tests.test_auth_permission.PermissionApiTests.test_tc_i08_admin_reply_visible_to_student) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 0.073s
+
+OK

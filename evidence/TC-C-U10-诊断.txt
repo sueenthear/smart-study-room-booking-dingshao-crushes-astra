@@ -1,0 +1,4 @@
+warning: The `tool.uv.dev-dependencies` field (used in `pyproject.toml`) is deprecated and will be removed in a future release; use `dependency-groups.dev` instead
+Error in sitecustomize; set PYTHONVERBOSE for traceback:
+FileNotFoundError: [Errno 2] No usable temporary directory found in ['D:\\tmp', 'D:\\tmp', 'D:\\tmp', 'C:\\Users\\x8835\\AppData\\Local\\Temp', 'C:\\WINDOWS\\Temp', 'c:\\temp', 'c:\\tmp', '\\temp', '\\tmp', 'D:\\学习\\大三上\\软件工程\\smart-study-room-booking-dingshao-crushes-astra-main']
+test_c_u10_89_day_record_counts (tests.test_credit_zcy.ActiveViolationUnitTests.test_c_u10_89_day_record_counts) ... 

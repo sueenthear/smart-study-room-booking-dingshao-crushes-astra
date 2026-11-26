@@ -1,0 +1,14 @@
+TC编号：TC-I01
+场景：管理员登录并读取身份（AC-01）
+用例全名：tests.test_auth_permission.PermissionApiTests.test_tc_i01_admin_login_and_identity
+代码版本：7416c19
+环境：Windows-11-10.0.26200-SP0 / Python 3.13.14 / uv 0.13.5 (46776a95d 2026-10-21 x86_64-pc-windows-msvc)
+命令：uv run python -m unittest tests.test_auth_permission.PermissionApiTests.test_tc_i01_admin_login_and_identity -v
+结果：PASS
+原始输出：
+test_tc_i01_admin_login_and_identity (tests.test_auth_permission.PermissionApiTests.test_tc_i01_admin_login_and_identity) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 0.085s
+
+OK

@@ -1,0 +1,14 @@
+TC编号：TC-U14
+场景：黑名单日期归一化：非法格式抛 HTTPException 400（BR-11）
+用例全名：tests.test_auth_permission.NormalizeBlacklistUntilTests.test_tc_u14_invalid_format_raises_400
+代码版本：7416c19
+环境：Windows-11-10.0.26200-SP0 / Python 3.13.14 / uv 0.13.5 (46776a95d 2026-10-21 x86_64-pc-windows-msvc)
+命令：uv run python -m unittest tests.test_auth_permission.NormalizeBlacklistUntilTests.test_tc_u14_invalid_format_raises_400 -v
+结果：PASS
+原始输出：
+test_tc_u14_invalid_format_raises_400 (tests.test_auth_permission.NormalizeBlacklistUntilTests.test_tc_u14_invalid_format_raises_400) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+OK

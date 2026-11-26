@@ -1,0 +1,14 @@
+TC编号：TC-U15
+场景：账号快照：正常账号 days_remaining 为空且不含 password（FR-14 / Q-P03）
+用例全名：tests.test_auth_permission.AccountSnapshotTests.test_tc_u15_normal_account
+代码版本：7416c19
+环境：Windows-11-10.0.26200-SP0 / Python 3.13.14 / uv 0.13.5 (46776a95d 2026-10-21 x86_64-pc-windows-msvc)
+命令：uv run python -m unittest tests.test_auth_permission.AccountSnapshotTests.test_tc_u15_normal_account -v
+结果：PASS
+原始输出：
+test_tc_u15_normal_account (tests.test_auth_permission.AccountSnapshotTests.test_tc_u15_normal_account) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+OK

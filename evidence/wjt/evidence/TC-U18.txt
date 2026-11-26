@@ -1,0 +1,14 @@
+TC编号：TC-U18
+场景：token 摘要：不同 token 不同且为 64 位十六进制（NFR-02）
+用例全名：tests.test_auth_permission.TokenDigestTests.test_tc_u18_digest_is_sha256_hex
+代码版本：7416c19
+环境：Windows-11-10.0.26200-SP0 / Python 3.13.14 / uv 0.13.5 (46776a95d 2026-10-21 x86_64-pc-windows-msvc)
+命令：uv run python -m unittest tests.test_auth_permission.TokenDigestTests.test_tc_u18_digest_is_sha256_hex -v
+结果：PASS
+原始输出：
+test_tc_u18_digest_is_sha256_hex (tests.test_auth_permission.TokenDigestTests.test_tc_u18_digest_is_sha256_hex) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+OK

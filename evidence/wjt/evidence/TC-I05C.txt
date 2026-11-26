@@ -1,0 +1,15 @@
+TC编号：TC-I05C
+场景：越权读应一律 403（待裁决：候选 BR-22）
+用例全名：tests.test_auth_permission.PermissionApiTests.test_tc_i05c_violation_query_should_return_403
+代码版本：7416c19
+环境：Windows-11-10.0.26200-SP0 / Python 3.13.14 / uv 0.13.5 (46776a95d 2026-10-21 x86_64-pc-windows-msvc)
+命令：uv run python -m unittest tests.test_auth_permission.PermissionApiTests.test_tc_i05c_violation_query_should_return_403 -v
+结果：SKIPPED（待裁决：越权读是否一律 403（候选 BR-22，业务确认人未定））
+原始输出：
+test_tc_i05c_violation_query_should_return_403 (tests.test_auth_permission.PermissionApiTests.test_tc_i05c_violation_query_should_return_403)
+语义判定用例：裁定为「一律 403」后移除 skip，本用例应通过。 ... skipped '待裁决：越权读是否一律 403（候选 BR-22，业务确认人未定）'
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+OK (skipped=1)

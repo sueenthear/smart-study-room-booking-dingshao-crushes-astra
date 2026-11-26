@@ -1,0 +1,15 @@
+TC编号：TC-I11
+场景：BR-21 差距：未填解封日期应被拒绝（当前补默认 7 天）
+用例全名：tests.test_auth_permission.PermissionApiTests.test_tc_i11_blacklist_requires_unban_date
+代码版本：7416c19
+环境：Windows-11-10.0.26200-SP0 / Python 3.13.14 / uv 0.13.5 (46776a95d 2026-10-21 x86_64-pc-windows-msvc)
+命令：uv run python -m unittest tests.test_auth_permission.PermissionApiTests.test_tc_i11_blacklist_requires_unban_date -v
+结果：EXPECTED FAILURE（决定已下、实现未到）
+原始输出：
+test_tc_i11_blacklist_requires_unban_date (tests.test_auth_permission.PermissionApiTests.test_tc_i11_blacklist_requires_unban_date)
+BR-21：强制填写解封日期，不填拒绝提交。 ... expected failure
+
+----------------------------------------------------------------------
+Ran 1 test in 0.040s
+
+OK (expected failures=1)
